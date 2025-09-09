@@ -11,6 +11,8 @@ import { SCREEN_NAMES } from '../../types';
 
 const ResetPasswordWithOTPScreen = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isOTPVerified, setIsOTPVerified] = useState(false);
+  const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
   const { resetPasswordWithOTP, forgotPassword } = useAuth();
   const email = route.params?.email || '';
 
@@ -28,8 +30,8 @@ const ResetPasswordWithOTPScreen = ({ navigation, route }) => {
   });
 
   const onSubmit = async (data) => {
-    if (!email) {
-      Alert.alert('Error', 'Email not found. Please try again.');
+    if (!email || !isOTPVerified) {
+      Alert.alert('Error', 'Please verify OTP first.');
       return;
     }
 
@@ -55,6 +57,23 @@ const ResetPasswordWithOTPScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleVerifyOTP = async (otpValue) => {
+    if (!email || !otpValue) {
+      Alert.alert('Error', 'Please enter the OTP.');
+      return;
+    }
+
+    if (otpValue.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit OTP.');
+      return;
+    }
+
+    // For now, we'll just validate the format and proceed to password entry
+    // The actual OTP verification will happen when the user submits the new password
+    setIsOTPVerified(true);
+    Alert.alert('Success', 'OTP format validated! Now you can set your new password.');
+  };
+
   const handleResendOTP = async () => {
     if (!email) {
       Alert.alert('Error', 'Email not found. Please go back and try again.');
@@ -77,88 +96,113 @@ const ResetPasswordWithOTPScreen = ({ navigation, route }) => {
         {/* Header */}
         <View className="mb-8">
           <Text className="text-2xl font-bold text-gray-900 text-center mb-2">
-            Reset Password with OTP
+            {isOTPVerified ? 'Set New Password' : 'Reset Password with OTP'}
           </Text>
           <Text className="text-gray-600 text-center">
-            Enter the 6-digit OTP sent to {email}
+            {isOTPVerified 
+              ? 'Enter your new password below' 
+              : `Enter the 6-digit OTP sent to ${email}`
+            }
           </Text>
         </View>
 
         {/* Form */}
-        <Controller
-          control={control}
-          name="otp"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Input
-              label="OTP"
-              placeholder="Enter 6-digit OTP"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={errors.otp?.message}
-              keyboardType="numeric"
-              maxLength={6}
-              autoCapitalize="none"
-              autoCorrect={false}
-              leftIcon={<Ionicons name="keypad-outline" size={20} color="#6b7280" />}
-              required
+        {!isOTPVerified && (
+          <>
+            <Controller
+              control={control}
+              name="otp"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="OTP"
+                  placeholder="Enter 6-digit OTP"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.otp?.message}
+                  keyboardType="numeric"
+                  maxLength={6}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  leftIcon={<Ionicons name="keypad-outline" size={20} color="#6b7280" />}
+                  required
+                />
+              )}
             />
-          )}
-        />
 
-        <Controller
-          control={control}
-          name="password"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Input
-              label="New Password"
-              placeholder="Enter new password"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={errors.password?.message}
-              secureTextEntry
-              leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#6b7280" />}
-              required
+            <Controller
+              control={control}
+              name="otp"
+              render={({ field: { value } }) => (
+                <Button
+                  title="Verify OTP"
+                  onPress={() => handleVerifyOTP(value)}
+                  loading={isVerifyingOTP}
+                  fullWidth
+                  size="large"
+                />
+              )}
             />
-          )}
-        />
 
-        <Controller
-          control={control}
-          name="confirmPassword"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Input
-              label="Confirm New Password"
-              placeholder="Confirm new password"
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-              error={errors.confirmPassword?.message}
-              secureTextEntry
-              leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#6b7280" />}
-              required
+            <View className="mt-4">
+              <Button
+                title="Resend OTP"
+                onPress={handleResendOTP}
+                variant="outline"
+                fullWidth
+                size="medium"
+              />
+            </View>
+          </>
+        )}
+
+        {isOTPVerified && (
+          <>
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="New Password"
+                  placeholder="Enter new password"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.password?.message}
+                  secureTextEntry
+                  leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#6b7280" />}
+                  required
+                />
+              )}
             />
-          )}
-        />
 
-        <Button
-          title="Reset Password"
-          onPress={handleSubmit(onSubmit)}
-          loading={isLoading}
-          fullWidth
-          size="large"
-        />
+            <Controller
+              control={control}
+              name="confirmPassword"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input
+                  label="Confirm New Password"
+                  placeholder="Confirm new password"
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={errors.confirmPassword?.message}
+                  secureTextEntry
+                  leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#6b7280" />}
+                  required
+                />
+              )}
+            />
 
-        <View className="mt-4">
-          <Button
-            title="Resend OTP"
-            onPress={handleResendOTP}
-            variant="outline"
-            fullWidth
-            size="medium"
-          />
-        </View>
+            <Button
+              title="Reset Password"
+              onPress={handleSubmit(onSubmit)}
+              loading={isLoading}
+              fullWidth
+              size="large"
+            />
+          </>
+        )}
 
         <View className="mt-6">
           <Text className="text-gray-600 text-center text-sm">

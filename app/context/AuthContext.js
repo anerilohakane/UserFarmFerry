@@ -215,9 +215,9 @@ export const AuthProvider = ({ children }) => {
     AsyncStorage.setItem(CONFIG.STORAGE_KEYS.USER_DATA, JSON.stringify({ ...state.user, ...userData }));
   };
 
-  const forgotPassword = async (email) => {
+  const forgotPassword = async (email, role = 'customer') => {
     try {
-      await authAPI.forgotPassword(email);
+      await authAPI.forgotPassword(email, role);
       return { success: true };
     } catch (error) {
       throw error;
