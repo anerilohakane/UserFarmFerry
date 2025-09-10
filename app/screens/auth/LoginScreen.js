@@ -10,6 +10,7 @@ const LoginScreen = () => {
   const handleLoginSuccess = () => {
     // AuthContext will set isAuthenticated=true and AppNavigator will
     // automatically swap AuthStack → AppStack. No manual reset needed here.
+    console.log('Login success callback triggered - AuthContext should handle navigation');
   };
 
   const handleForgotPassword = () => {
