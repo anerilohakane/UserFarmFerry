@@ -615,11 +615,8 @@ const OrderSummaryScreen = ({ route }) => {
     }
 
     const userData = user?.customer || user;
-    if (!userData?.email) {
-      throw new Error(
-        "Email is required for online payment. Please update your profile."
-      );
-    }
+    // Email validation removed for online payments
+    // Online payments (including UPI, Razorpay, etc.) no longer require email
 
     try {
       const orderId = `ORDER_${Date.now()}`;
@@ -704,16 +701,8 @@ const OrderSummaryScreen = ({ route }) => {
     }
 
     const userData = user?.customer || user;
-    if (
-      (selectedPayment === "razorpay" || selectedPayment === "razorpay_web") &&
-      !userData?.email
-    ) {
-      Alert.alert(
-        "Email Required",
-        "Email is required for Razorpay payment. Please update your profile."
-      );
-      return;
-    }
+    // Email validation removed for all online payments
+    // Users can now proceed with any payment method without email requirement
 
     setIsPaying(true);
     setPaymentError(null);
@@ -748,9 +737,8 @@ const OrderSummaryScreen = ({ route }) => {
           throw new Error("Please log in to use Razorpay payment");
         }
 
-        if (!userData?.email) {
-          throw new Error("Email is required for Razorpay payment");
-        }
+        // Email validation removed for all online payments
+        // Razorpay payments no longer require email
 
         // Build customer name with proper fallback
         let customerName = "Customer";
@@ -1917,12 +1905,6 @@ const OrderSummaryScreen = ({ route }) => {
                         🔐 Please log in to use Razorpay
                       </Text>
                     </View>
-                  ) : !(user?.customer?.email || user?.email) ? (
-                    <View className="bg-orange-50 border border-orange-200 rounded-lg p-2 mb-2">
-                      <Text className="text-orange-700 text-xs">
-                        📧 Email required for Razorpay payment
-                      </Text>
-                    </View>
                   ) : (
                     <View className="bg-green-50 border border-green-200 rounded-lg p-2 mb-2">
                       <Text className="text-green-700 text-xs">
@@ -1942,7 +1924,7 @@ const OrderSummaryScreen = ({ route }) => {
                     title="Credit/Debit Cards, UPI, Net Banking"
                     selected={selectedPayment === "razorpay"}
                     onPress={() => setSelectedPayment("razorpay")}
-                    disabled={!user || !(user?.customer?.email || user?.email)}
+                    disabled={!user}
                   />
 
                   <PaymentOption

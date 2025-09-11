@@ -270,20 +270,31 @@ export class RazorpayService {
     ];
   }
 
-  static validatePaymentData(paymentData) {
-    const { amount, customerName, customerEmail } = paymentData;
-    
-    if (!amount || amount <= 0) {
-      throw new Error('Invalid payment amount');
-    }
-    
+  static validateCustomerData(customerName, customerEmail, paymentMethod = null) {
     if (!customerName || customerName.trim().length === 0) {
       throw new Error('Customer name is required');
+    }
+    
+    // Skip email validation for UPI payments
+    if (paymentMethod === 'upi') {
+      return true;
     }
     
     if (!customerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
       throw new Error('Valid customer email is required');
     }
+    
+    return true;
+  }
+
+  static validatePaymentData(paymentData) {
+    const { amount, customerName, customerEmail, paymentMethod } = paymentData;
+    
+    if (!amount || amount <= 0) {
+      throw new Error('Invalid payment amount');
+    }
+    
+    this.validateCustomerData(customerName, customerEmail, paymentMethod);
     
     return true;
   }
