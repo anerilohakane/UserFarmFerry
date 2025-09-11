@@ -899,13 +899,323 @@ const OrderSummaryScreen = ({ route }) => {
 
   if (!addresses || addresses.length === 0) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center bg-gray-50">
-        <Text className="text-lg mb-2">
-          No addresses found. Please add a shipping address.
-        </Text>
-        <TouchableOpacity onPress={() => navigation.navigate("AddAddress")}>
-          <Text className="text-green-600 font-semibold">Add Address</Text>
-        </TouchableOpacity>
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: responsiveValue(16, 24),
+            paddingTop: responsiveValue(16, 24),
+          }}
+        >
+          {/* Welcome Message for New Users */}
+          <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+            <Text
+              className="text-lg font-semibold mb-2"
+              style={{ fontSize: responsiveValue(16, 18) }}
+            >
+              Welcome! Let's set up your delivery address
+            </Text>
+            <Text
+              className="text-gray-600 mb-3"
+              style={{ fontSize: responsiveValue(14, 16) }}
+            >
+              Use the map below to select your location and add your delivery address.
+            </Text>
+          </View>
+
+          {/* Map View for New Users */}
+          <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+            <Text
+              className="text-lg font-semibold mb-2"
+              style={{ fontSize: responsiveValue(16, 18) }}
+            >
+              Your Location
+            </Text>
+
+            {locationError && (
+              <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-2">
+                <Text
+                  className="text-yellow-700 text-xs"
+                  style={{ fontSize: responsiveValue(11, 13) }}
+                >
+                  {locationError}
+                </Text>
+              </View>
+            )}
+
+            <View style={{ height: 220, borderRadius: 12, overflow: "hidden" }}>
+              {isLoadingLocation ? (
+                <View className="flex-1 justify-center items-center bg-gray-100">
+                  <ActivityIndicator size="large" color="#059669" />
+                  <Text
+                    className="text-gray-500 mt-2"
+                    style={{ fontSize: responsiveValue(13, 15) }}
+                  >
+                    Getting your location...
+                  </Text>
+                </View>
+              ) : region ? (
+                <MapView
+                  style={{ flex: 1 }}
+                  initialRegion={region}
+                  showsUserLocation={true}
+                  showsMyLocationButton={true}
+                  showsCompass={true}
+                  showsScale={true}
+                  zoomEnabled={true}
+                  scrollEnabled={true}
+                  rotateEnabled={true}
+                  pitchEnabled={true}
+                  mapType="standard"
+                  onMapReady={() => console.log("Map is ready")}
+                  onRegionChangeComplete={setRegion}
+                >
+                  {location && (
+                    <Marker
+                      coordinate={location}
+                      title="Your Location"
+                      description="Your current location"
+                      pinColor="#059669"
+                      draggable={true}
+                      onDragEnd={(e) => {
+                        const newCoords = e.nativeEvent.coordinate;
+                        setLocation(newCoords);
+                        setRegion({
+                          ...newCoords,
+                          latitudeDelta: 0.02,
+                          longitudeDelta: 0.02,
+                        });
+                      }}
+                    />
+                  )}
+                </MapView>
+              ) : (
+                <View className="flex-1 justify-center items-center bg-gray-100">
+                  <Text
+                    className="text-gray-500"
+                    style={{ fontSize: responsiveValue(13, 15) }}
+                  >
+                    Map not available
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {mapError && (
+              <View className="bg-red-50 border border-red-200 rounded-lg p-2 mt-2">
+                <Text
+                  className="text-red-700 text-xs"
+                  style={{ fontSize: responsiveValue(11, 13) }}
+                >
+                  {mapError}
+                </Text>
+              </View>
+            )}
+
+            {/* Location Coordinates */}
+            {location && (
+              <View className="mt-2 p-2 bg-gray-50 rounded-lg">
+                <Text
+                  className="text-xs text-gray-600"
+                  style={{ fontSize: responsiveValue(10, 12) }}
+                >
+                  Latitude: {location.latitude.toFixed(6)}
+                </Text>
+                <Text
+                  className="text-xs text-gray-600"
+                  style={{ fontSize: responsiveValue(10, 12) }}
+                >
+                  Longitude: {location.longitude.toFixed(6)}
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              onPress={async () => {
+                if (location) {
+                  try {
+                    // Get address from coordinates using reverse geocoding
+                    const result = await Location.reverseGeocodeAsync(location, {
+                      useGoogleMaps: true,
+                    });
+
+                    let suggestedAddress = "";
+                    if (result && result.length > 0) {
+                      const addr = result[0];
+                      const addressParts = [];
+
+                      // Build address string
+                      if (addr.streetNumber) addressParts.push(addr.streetNumber);
+                      if (addr.street) addressParts.push(addr.street);
+                      if (addr.district && addr.district !== addr.city)
+                        addressParts.push(addr.district);
+                      if (addr.city) addressParts.push(addr.city);
+                      if (addr.region) addressParts.push(addr.region);
+                      if (addr.postalCode) addressParts.push(addr.postalCode);
+                      if (addr.country && addr.country !== "India")
+                        addressParts.push(addr.country);
+
+                      suggestedAddress = addressParts.filter(Boolean).join(", ");
+                    }
+
+                    navigation.navigate("AddAddress", {
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      suggestedAddress:
+                        suggestedAddress ||
+                        `Location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`,
+                    });
+                  } catch (error) {
+                    console.error("Error getting address:", error);
+                    // Fallback to coordinates
+                    navigation.navigate("AddAddress", {
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      suggestedAddress: `Location: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`,
+                    });
+                  }
+                } else {
+                  Alert.alert(
+                    "Location Not Available",
+                    "Please wait for your location to load or enable location services."
+                  );
+                }
+              }}
+              className="mt-3 bg-green-600 py-3 rounded-xl"
+            >
+              <Text
+                className="text-white text-center font-semibold"
+                style={{ fontSize: responsiveValue(14, 16) }}
+              >
+                Add Address from Current Location
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Alternative Option */}
+          <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+            <Text
+              className="text-lg font-semibold mb-2"
+              style={{ fontSize: responsiveValue(16, 18) }}
+            >
+              Or Add Address Manually
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("AddAddress")}
+              className="bg-gray-100 py-3 rounded-xl"
+            >
+              <Text
+                className="text-gray-700 text-center font-semibold"
+                style={{ fontSize: responsiveValue(14, 16) }}
+              >
+                Enter Address Details
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Order Summary for New Users */}
+          {cart.items && cart.items.length > 0 && (
+            <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+              <View className="flex-row justify-between items-center mb-2">
+                <Text
+                  className="text-lg font-semibold"
+                  style={{ fontSize: responsiveValue(16, 18) }}
+                >
+                  Order Summary
+                </Text>
+                {routeItems && (
+                  <View className="bg-green-100 px-2 py-1 rounded-full">
+                    <Text
+                      className="text-xs font-medium text-green-700"
+                      style={{ fontSize: responsiveValue(10, 12) }}
+                    >
+                      Buy Now
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {cart.items.map((item) => (
+                <View
+                  key={item.product?._id || item.product?.id || item.product}
+                  className="flex-row justify-between items-center mb-2"
+                  style={{ minHeight: responsiveValue(30, 36) }}
+                >
+                  <Text
+                    className="flex-1"
+                    style={{ fontSize: responsiveValue(13, 15) }}
+                  >
+                    {item.product?.name || item.name} x{item.quantity}
+                  </Text>
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    ₹
+                    {(item.product?.price
+                      ? item.product.price * item.quantity
+                      : item.price * item.quantity
+                    ).toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+              <View className="border-t border-gray-200 mt-2 pt-2">
+                <View className="flex-row justify-between items-center mb-1">
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    Subtotal
+                  </Text>
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    ₹{cart.subtotal.toFixed(2)}
+                  </Text>
+                </View>
+                <View className="flex-row justify-between items-center mb-1">
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    GST
+                  </Text>
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    ₹{cart.gst.toFixed(2)}
+                  </Text>
+                </View>
+                <View className="flex-row justify-between items-center mb-1">
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    Platform Fee
+                  </Text>
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    ₹{cart.platformFee.toFixed(2)}
+                  </Text>
+                </View>
+                {totalHandlingFee > 0 && (
+                  <View className="flex-row justify-between items-center mb-1">
+                    <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                      Handling Fee
+                    </Text>
+                    <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                      ₹{totalHandlingFee.toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+                <View className="flex-row justify-between items-center mb-1">
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    Shipping
+                  </Text>
+                  <Text style={{ fontSize: responsiveValue(13, 15) }}>
+                    ₹{cart.shipping.toFixed(2)}
+                  </Text>
+                </View>
+                <View className="flex-row justify-between items-center font-bold">
+                  <Text
+                    className="font-bold"
+                    style={{ fontSize: responsiveValue(14, 16) }}
+                  >
+                    Total
+                  </Text>
+                  <Text
+                    className="font-bold"
+                    style={{ fontSize: responsiveValue(14, 16) }}
+                  >
+                    ₹{cart.total.toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </ScrollView>
       </SafeAreaView>
     );
   }
