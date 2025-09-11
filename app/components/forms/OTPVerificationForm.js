@@ -185,7 +185,7 @@ const OTPVerificationForm = ({
           onPress={handleResendOTP} 
           disabled={isSendingOtp || countdown > 0}
         >
-          <Text className={`font-bold ${countdown > 0 ? 'text-gray-400' : 'text-blue-600'}`}>
+          <Text className={`font-bold ${countdown > 0 ? 'text-gray-400' : 'text-green-600'}`}>
             {isSendingOtp ? 'Sending...' : countdown > 0 ? `Resend in ${countdown}s` : 'Resend OTP'}
           </Text>
         </TouchableOpacity>

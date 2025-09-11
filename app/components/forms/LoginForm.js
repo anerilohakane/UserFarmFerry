@@ -488,7 +488,7 @@ const LoginForm = ({ onSuccess }) => {
 
           <TouchableOpacity
             style={{
-              backgroundColor: '#2563eb',
+              backgroundColor: "#10b981",
               borderRadius: 8,
               padding: 16,
               alignItems: 'center',
@@ -507,7 +507,7 @@ const LoginForm = ({ onSuccess }) => {
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
             <Text style={{ color: '#666', fontSize: 14 }}>Didn't receive code? </Text>
             <TouchableOpacity onPress={handleSendOtp}>
-              <Text style={{ color: '#2563eb', fontWeight: '500', fontSize: 14 }}>Resend OTP</Text>
+              <Text style={{ color: '#10b981', fontWeight: '500', fontSize: 14 }}>Resend OTP</Text>
             </TouchableOpacity>
           </View>
 
@@ -518,7 +518,7 @@ const LoginForm = ({ onSuccess }) => {
             }}
             style={{ alignItems: 'center' }}
           >
-            <Text style={{ color: '#666', fontSize: 14 }}>Back to Login</Text>
+            <Text style={{ color: '#10b981', fontSize: 14 }}>Back to Login</Text>
           </TouchableOpacity>
         </>
       )}

@@ -548,27 +548,29 @@ const SubcategoriesScreen = ({ navigation, route }) => {
         }}
         style={{
           paddingVertical: 12,
-          paddingHorizontal: 16,
-          backgroundColor: isSelected ? "#f0fdf4" : "transparent",
-          borderLeftWidth: 3,
-          borderLeftColor: isSelected ? "#10b981" : "transparent",
-          marginBottom: 4,
+          paddingHorizontal: 12,
+          marginRight: 12,
+          backgroundColor: isSelected ? "#f0fdf4" : "white",
+          borderRadius: 12,
+          borderWidth: 2,
+          borderColor: isSelected ? "#10b981" : "#e5e7eb",
+          minWidth: 80,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 2,
         }}
       >
         <View style={{ alignItems: "center" }}>
           <View
             style={{
-              width: 50,
-              height: 50,
-              borderRadius: 12,
+              width: 40,
+              height: 40,
+              borderRadius: 10,
               overflow: "hidden",
-              marginBottom: 8,
+              marginBottom: 6,
               backgroundColor: "#f3f4f6",
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 2,
             }}
           >
             <Image
@@ -577,50 +579,25 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                   ? { uri: item.image.url }
                   : item.image && typeof item.image === "string" && item.image.trim() !== ""
                     ? { uri: item.image }
-                    : { uri: "https://via.placeholder.com/50" }
+                    : { uri: "https://via.placeholder.com/40" }
               }
               style={{ width: "100%", height: "100%" }}
               resizeMode="cover"
             />
           </View>
 
-          <View
+          <Text
             style={{
-              backgroundColor: isSelected ? "#10b981" : "#f3f4f6",
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              borderRadius: 12,
-              minWidth: 60,
-              alignItems: "center",
+              fontSize: 10,
+              fontWeight: isSelected ? "600" : "500",
+              color: isSelected ? "#10b981" : "#374151",
+              textAlign: "center",
+              lineHeight: 12,
             }}
+            numberOfLines={2}
           >
-            <Text
-              style={{
-                fontSize: 11,
-                fontWeight: isSelected ? "600" : "500",
-                color: isSelected ? "white" : "#374151",
-                textAlign: "center",
-              }}
-            >
-              {item.name}
-            </Text>
-          </View>
-
-          {item.description && (
-            <Text
-              style={{
-                fontSize: 10,
-                color: "#6b7280",
-                textAlign: "center",
-                marginTop: 4,
-                lineHeight: 12,
-                paddingHorizontal: 4,
-              }}
-              numberOfLines={2}
-            >
-              {item.description}
-            </Text>
-          )}
+            {item.name}
+          </Text>
         </View>
       </TouchableOpacity>
     )
@@ -837,11 +814,11 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                     borderRadius: 8,
                   }}
                 >
-                  <Text style={{ color: "#6b7280", fontWeight: "600", fontSize: 11 }}>Out of stock</Text>
+                  <Text style={{ color: "red", fontWeight: "600", fontSize: 11 }}>Out of stock</Text>
                 </View>
               ) : (
                 <LinearGradient
-                  colors={["#10b981", "#059669"]}
+                  colors={["#fdba74", "#fb923c"]}
                   style={{
                     paddingVertical: 6,
                     flexDirection: "row",
@@ -859,7 +836,7 @@ const SubcategoriesScreen = ({ navigation, route }) => {
               <TouchableOpacity
                 style={{
                   flex: 1,
-                  backgroundColor: isOutOfStock ? "#e5e7eb" : (buyNowPressedId === productId ? "#10b981" : "#f3f4f6"),
+                  backgroundColor: isOutOfStock ? "#e5e7eb" : (buyNowPressedId === productId ? '#10b981':'#059669'),
                   paddingVertical: 6,
                   flexDirection: "row",
                   alignItems: "center",
@@ -886,7 +863,7 @@ const SubcategoriesScreen = ({ navigation, route }) => {
               >
                 <Text
                   style={{
-                    color: isOutOfStock ? "#6b7280" : (buyNowPressedId === productId ? "white" : "#1f2937"),
+                    color: isOutOfStock ? "red" : (buyNowPressedId === productId ? "white" : "white"),
                     fontWeight: "600",
                     fontSize: 11,
                   }}
@@ -1009,108 +986,96 @@ const SubcategoriesScreen = ({ navigation, route }) => {
         </View>
       )}
 
-      {/* Main Content */}
-      <View style={{ flex: 1, flexDirection: "row" }}>
-        {/* Sidebar - Subcategories */}
-        <View
-          style={{
-            width: width * 0.3,
-            backgroundColor: "white",
-            borderRightWidth: 1,
-            borderRightColor: "#e5e7eb",
-          }}
+      {/* Horizontal Subcategories */}
+      <View style={{ backgroundColor: "#f9fafb", paddingVertical: 12 }}>
+        {loadingSubcategories ? (
+          <View style={{ padding: 20, alignItems: "center" }}>
+            <ActivityIndicator size="small" color="#10b981" />
+            <Text style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>Loading categories...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={subcategories}
+            renderItem={renderSubcategoryItem}
+            keyExtractor={(item) => (item._id || item.id).toString()}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+            decelerationRate="fast"
+            snapToInterval={92}
+            snapToAlignment="start"
+          />
+        )}
+      </View>
+
+      {/* Main Content - Products */}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#059669"]} />}
         >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#059669"]} />}
-          >
-            <View style={{ paddingVertical: 8 }}>
-              {loadingSubcategories ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                  <ActivityIndicator size="small" color="#10b981" />
-                  <Text style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>Loading categories...</Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={subcategories}
-                  renderItem={renderSubcategoryItem}
-                  keyExtractor={(item) => (item._id || item.id).toString()}
-                  scrollEnabled={false}
-                />
-              )}
-            </View>
-          </ScrollView>
-        </View>
+          <View style={{ padding: 16 }}>
+            {selectedSubcategory && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 18, fontWeight: "bold", color: "#1f2937", marginBottom: 4 }}>
+                  {selectedSubcategory.name}
+                </Text>
+                {selectedSubcategory.description && (
+                  <Text style={{ fontSize: 14, color: "#6b7280" }}>{selectedSubcategory.description}</Text>
+                )}
+              </View>
+            )}
 
-        {/* Main Content - Products */}
-        <View style={{ flex: 1 }}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={["#059669"]} />}
-          >
-            <View style={{ padding: 16 }}>
-              {selectedSubcategory && (
-                <View style={{ marginBottom: 16 }}>
-                  <Text style={{ fontSize: 18, fontWeight: "bold", color: "#1f2937", marginBottom: 4 }}>
-                    {selectedSubcategory.name}
-                  </Text>
-                  {selectedSubcategory.description && (
-                    <Text style={{ fontSize: 14, color: "#6b7280" }}>{selectedSubcategory.description}</Text>
-                  )}
-                </View>
-              )}
-
-              {loadingSubcategories || loadingProducts ? (
-                <View style={{ padding: 40, alignItems: "center" }}>
-                  <ActivityIndicator size="large" color="#10b981" />
-                  <Text style={{ marginTop: 12, fontSize: 14, color: "#6b7280" }}>
-                    {loadingSubcategories ? "Loading categories..." : "Loading products..."}
-                  </Text>
-                </View>
-              ) : updatingAllProducts ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                  <ActivityIndicator size="small" color="#10b981" />
-                  <Text style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>Updating product ratings...</Text>
-                </View>
-              ) : filteredProducts.length === 0 ? (
-                <View style={{ padding: 40, alignItems: "center" }}>
-                  <Text style={{ fontSize: 16, color: "#6b7280", textAlign: "center" }}>
-                    {products.length === 0 ? "No products found in this category" : "No products match your filters"}
-                  </Text>
-                  <Text style={{ fontSize: 14, color: "#9ca3af", textAlign: "center", marginTop: 8 }}>
-                    {products.length === 0
-                      ? "Try selecting a different subcategory"
-                      : "Try adjusting your search or filters"}
-                  </Text>
-                  {products.length > 0 && (
-                    <TouchableOpacity
-                      onPress={clearFilters}
-                      style={{
-                        marginTop: 12,
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        backgroundColor: "#10b981",
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Text style={{ color: "white", fontWeight: "600" }}>Clear Filters</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ) : (
-                <FlatList
-                  data={filteredProducts}
-                  renderItem={renderProductItem}
-                  keyExtractor={(item) => (item._id || item.id).toString()}
-                  numColumns={2}
-                  columnWrapperStyle={{ justifyContent: "space-between" }}
-                  scrollEnabled={false}
-                  showsVerticalScrollIndicator={false}
-                />
-              )}
-            </View>
-          </ScrollView>
-        </View>
+            {loadingSubcategories || loadingProducts ? (
+              <View style={{ padding: 40, alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#10b981" />
+                <Text style={{ marginTop: 12, fontSize: 14, color: "#6b7280" }}>
+                  {loadingSubcategories ? "Loading categories..." : "Loading products..."}
+                </Text>
+              </View>
+            ) : updatingAllProducts ? (
+              <View style={{ padding: 20, alignItems: "center" }}>
+                <ActivityIndicator size="small" color="#10b981" />
+                <Text style={{ marginTop: 8, fontSize: 12, color: "#6b7280" }}>Updating product ratings...</Text>
+              </View>
+            ) : filteredProducts.length === 0 ? (
+              <View style={{ padding: 40, alignItems: "center" }}>
+                <Text style={{ fontSize: 16, color: "#6b7280", textAlign: "center" }}>
+                  {products.length === 0 ? "No products found in this category" : "No products match your filters"}
+                </Text>
+                <Text style={{ fontSize: 14, color: "#9ca3af", textAlign: "center", marginTop: 8 }}>
+                  {products.length === 0
+                    ? "Try selecting a different subcategory"
+                    : "Try adjusting your search or filters"}
+                </Text>
+                {products.length > 0 && (
+                  <TouchableOpacity
+                    onPress={clearFilters}
+                    style={{
+                      marginTop: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      backgroundColor: "#10b981",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text style={{ color: "white", fontWeight: "600" }}>Clear Filters</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <FlatList
+                data={filteredProducts}
+                renderItem={renderProductItem}
+                keyExtractor={(item) => (item._id || item.id).toString()}
+                numColumns={2}
+                columnWrapperStyle={{ justifyContent: "space-between" }}
+                scrollEnabled={false}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+          </View>
+        </ScrollView>
       </View>
 
       {/* Filter Modal */}

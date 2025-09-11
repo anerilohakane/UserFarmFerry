@@ -34,6 +34,8 @@ const HomeScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [isSearchActive, setIsSearchActive] = useState(false);
+  const [allCategoryProducts, setAllCategoryProducts] = useState([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [cartNotificationProduct, setCartNotificationProduct] = useState(null);
 
@@ -82,21 +84,74 @@ const HomeScreen = ({ navigation }) => {
     })();
   }, []);
 
-  // Handle search functionality
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredProducts(fetchedProducts);
-      setIsSearchActive(false);
-    } else {
-      const filtered = fetchedProducts.filter(product =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.farmer.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredProducts(filtered);
-      setIsSearchActive(true);
+  // Fetch all products from the system (simpler approach)
+  const fetchAllProducts = async () => {
+    try {
+      setLoadingSearch(true);
+      
+      // Fetch all products without category filtering to get comprehensive results
+      const allProductsRes = await productsAPI.getProducts({ limit: 1000 });
+      const allProducts = (allProductsRes?.data?.data?.products || []).map(p => ({
+        ...p,
+        id: p._id,
+        image: p.images?.[0]?.url || '',
+        discount: p.offerPercentage,
+        rating: p.averageRating,
+        reviews: p.totalReviews,
+        farmer: p.supplierId?.businessName || '',
+        category: p.categoryId?.name || '',
+        price: (p.discountedPrice > 0) ? p.discountedPrice : p.price,
+        originalPrice: p.price,
+        stockQuantity: typeof p.stockQuantity === 'number' ? p.stockQuantity : 0,
+        inStock: (typeof p.stockQuantity === 'number' ? p.stockQuantity : 0) > 0,
+      }));
+      
+      setAllCategoryProducts(allProducts);
+      return allProducts;
+    } catch (error) {
+      console.error('Failed to fetch all products:', error);
+      return [];
+    } finally {
+      setLoadingSearch(false);
     }
-  }, [searchQuery, fetchedProducts]);
+  };
+
+  // Handle search functionality with comprehensive product search
+  useEffect(() => {
+    const performSearch = async () => {
+      if (searchQuery.trim() === '') {
+        setFilteredProducts(fetchedProducts);
+        setIsSearchActive(false);
+      } else {
+        setIsSearchActive(true);
+        setLoadingSearch(true);
+        
+        // If we don't have all products cached, fetch them
+        let allProducts = allCategoryProducts;
+        if (allCategoryProducts.length === 0) {
+          allProducts = await fetchAllProducts();
+        }
+        
+        // Search in all products (includes subcategory products)
+        const searchResults = allProducts.filter(product => {
+          const query = searchQuery.toLowerCase();
+          return (
+            (product.name && product.name.toLowerCase().includes(query)) ||
+            (product.category && product.category.toLowerCase().includes(query)) ||
+            (product.farmer && product.farmer.toLowerCase().includes(query)) ||
+            (product.description && product.description.toLowerCase().includes(query))
+          );
+        });
+        
+        setFilteredProducts(searchResults);
+        setLoadingSearch(false);
+      }
+    };
+    
+    // Debounce search to avoid too many API calls
+    const searchTimeout = setTimeout(performSearch, 300);
+    return () => clearTimeout(searchTimeout);
+  }, [searchQuery, fetchedProducts, allCategoryProducts]);
 
   // Fetch categories
   useEffect(() => {
@@ -520,11 +575,11 @@ const HomeScreen = ({ navigation }) => {
                 </View>
               ) : isOutOfStock ? (
                 <View className="py-2 flex-row items-center justify-center bg-gray-200 rounded-lg">
-                  <Text className="text-gray-500 font-semibold text-xs">Out of stock</Text>
+                  <Text className="text-red-500 font-semibold text-xs">Out of stock</Text>
                 </View>
               ) : (
                 <LinearGradient
-                  colors={['#10b981', '#059669']}
+                  colors={["#fdba74", "#fb923c"]}
                   className="py-2 flex-row items-center justify-center rounded-lg"
                 >
                   <ShoppingCart width={14} height={14} color="#fff" />
@@ -548,11 +603,11 @@ const HomeScreen = ({ navigation }) => {
               style={{
                 backgroundColor: isOutOfStock
                   ? '#e5e7eb'
-                  : (buyNowPressedId === productId ? '#10b981' : '#f3f4f6'),
+                  : (buyNowPressedId === productId ? '#10b981': '#059669'),
               }}
               disabled={isOutOfStock}
             >
-              <Text className={`font-semibold ${responsiveValue('text-xs', 'text-sm', 'text-sm')} ${isOutOfStock ? 'text-gray-500' : (buyNowPressedId === productId ? 'text-white' : 'text-gray-800')}`}>
+              <Text className={`font-semibold ${responsiveValue('text-xs', 'text-sm', 'text-sm')} ${isOutOfStock ? 'text-red-500' : (buyNowPressedId === productId ? 'text-white' : 'text-white')}`}>
                 {isOutOfStock ? 'Out of stock' : 'Buy Now'}
               </Text>
             </TouchableOpacity>
@@ -825,9 +880,16 @@ const HomeScreen = ({ navigation }) => {
             </View>
           )}
 
-          {filteredProducts.length === 0 ? (
+          {loadingSearch ? (
+            <View className="items-center justify-center py-10">
+              <Text className="text-gray-500">Searching all products...</Text>
+            </View>
+          ) : filteredProducts.length === 0 ? (
             <View className="items-center justify-center py-10">
               <Text className="text-gray-500">No products found matching your search</Text>
+              {isSearchActive && (
+                <Text className="text-gray-400 text-sm mt-2">Try searching with different keywords</Text>
+              )}
             </View>
           ) : (
             <FlatList

@@ -139,25 +139,26 @@ const ProductDetailsScreen = ({ route, navigation }) => {
         </View> */}
 
         {/* Product Image */}
-        <View className="w-full bg-gray-50 items-center justify-center py-6">
-          <View
-            className="bg-white rounded-3xl shadow-lg"
-            style={{
-              elevation: 8,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              transform: [{ translateY: -16 }],
-            }}
-          >
-            <Image
-              source={{ uri: product.image || (product.images && product.images[0]?.url) || 'https://via.placeholder.com/256?text=No+Image' }}
-              className="w-64 h-64 rounded-2xl"
-              resizeMode="contain"
-            />
-          </View>
-        </View>
+        {/* Product Image */}
+<View className="w-full bg-gray-50 items-center justify-center py-6">
+  <View
+    className="bg-white rounded-3xl shadow-lg"
+    style={{
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      transform: [{ translateY: -16 }],
+    }}
+  >
+    <Image
+      source={{ uri: product.image || (product.images && product.images[0]?.url) || 'https://via.placeholder.com/256?text=No+Image' }}
+      className="w-64 h-64 rounded-2xl"
+      resizeMode="cover" // Changed from 'contain' to 'cover'
+    />
+  </View>
+</View>
 
         {/* Product Info */}
         <View className="bg-white p-6 mt-4 rounded-t-3xl shadow-sm">
@@ -281,11 +282,11 @@ const ProductDetailsScreen = ({ route, navigation }) => {
             <Text className="text-gray-600 text-lg font-semibold">Added to Cart</Text>
           ) : !((typeof product.stockQuantity === 'number' ? product.stockQuantity : 0) > 0 || product.inStock) ? (
             <View style={{ flex: 1, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', borderRadius: 12 }}>
-              <Text className="text-gray-500 text-lg font-semibold">Out of stock</Text>
+              <Text className="text-red-500 text-lg font-semibold">Out of stock</Text>
             </View>
           ) : (
             <LinearGradient
-              colors={["#10b981", "#059669"]}
+              colors={["#fdba74", "#fb923c"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={{
