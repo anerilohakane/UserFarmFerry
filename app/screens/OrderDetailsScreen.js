@@ -296,6 +296,8 @@ export default function OrderDetailsScreen() {
 
   if (!order) return null;
 
+  const subtotal = getSubtotal(order.items);
+
   return (
     <ScrollView 
       className="flex-1 bg-gray-50" 
@@ -465,7 +467,7 @@ export default function OrderDetailsScreen() {
         <View className="border-t border-gray-200 mt-2 pt-2">
           <View className="flex-row justify-between items-center mb-1">
             <Text className="text-gray-600">Subtotal</Text>
-            <Text className="text-gray-700">₹{getSubtotal(order.items).toFixed(2)}</Text>
+            <Text className="text-gray-700">₹{subtotal.toFixed(2)}</Text>
           </View>
           
                      <View className="flex-row justify-between items-center mb-1">
@@ -474,7 +476,6 @@ export default function OrderDetailsScreen() {
                {/* Show GST percentage from backend */}
                {(() => {
                  // Calculate GST percentage from backend GST amount and subtotal
-                 const subtotal = getSubtotal(order.items);
                  if (subtotal > 0 && order.gst > 0) {
                    const gstPercentage = ((order.gst / subtotal) * 100).toFixed(1);
                    return ` (${gstPercentage}%)`;
@@ -492,7 +493,7 @@ export default function OrderDetailsScreen() {
           
           <View className="flex-row justify-between items-center mb-1">
             <Text className="text-gray-600">Shipping</Text>
-            <Text className="text-gray-700">₹{getShipping().toFixed(2)}</Text>
+            <Text className="text-gray-700">₹{getShipping(subtotal).toFixed(2)}</Text>
           </View>
           
           <View className="flex-row justify-between items-center font-bold">

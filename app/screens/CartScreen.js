@@ -249,7 +249,7 @@ export default function CartScreen({ navigation }) {
       <HeaderVariants.Back title="Cart" />
 
       {/* Deliver to block */}
-      <View className={`bg-white px-4 ${responsiveValue('py-2', 'py-3', 'py-3')} border-b border-gray-100`}>
+      {/* <View className={`bg-white px-4 ${responsiveValue('py-2', 'py-3', 'py-3')} border-b border-gray-100`}>
         <TouchableOpacity 
           className="flex-row items-center" 
           onPress={handleChangeAddress}
@@ -266,7 +266,7 @@ export default function CartScreen({ navigation }) {
         <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-500 mt-1 ml-8`}>
           Mokarwadi, Pune - 411046
         </Text>
-      </View>
+      </View> */}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -294,36 +294,33 @@ export default function CartScreen({ navigation }) {
           </View>
         ) : (
           <>
-            {/* Delivery Summary */}
-            <View className={`bg-white mx-4 mt-4 rounded-xl p-4 border border-green-100 shadow-sm`}>
-              <View className="flex-row items-center justify-between">
-                <View>
-                  <Text className={`${responsiveValue('text-base', 'text-lg', 'text-lg')} font-semibold text-gray-800`}>
-                    Get it in 10 mins
-                  </Text>
-                  <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-green-600 mt-1`}>
-                    {safeCartItems.length} Product{safeCartItems.length > 1 ? 's' : ''}
-                  </Text>
-                </View>
-                <View className="bg-green-100 px-3 py-1 rounded-full">
-                  <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} font-medium text-green-800`}>
-                    Express Delivery
+            {/* Promo Code Section */}
+            <View className="bg-white mx-4 mt-4 rounded-xl p-4 border border-gray-100">
+              <TouchableOpacity
+                className="flex-row items-center justify-between"
+                onPress={handlePromoCode}
+              >
+                <View className="flex-row items-center">
+                  <Tag size={responsiveValue(18, 20, 20)} color="#059669" />
+                  <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-700 ml-3`}>
+                    Apply Promo Code
                   </Text>
                 </View>
-              </View>
+                <ChevronRight size={responsiveValue(18, 20, 20)} color="#059669" />
+              </TouchableOpacity>
             </View>
 
             {/* Cart Items */}
             <View className={`px-4 ${responsiveValue('pt-3', 'pt-4', 'pt-4')}`}>
               {safeCartItems.map((item) => {
                 if (!item) return null;
-                                 // Calculate discount for individual item: Original Price - Current Price
-                 const originalTotal = item.originalPrice ? item.originalPrice * item.quantity : item.price * item.quantity;
-                 const currentTotal = item.totalPrice || item.price * item.quantity;
-                 const discount = Math.max(0, originalTotal - currentTotal);
-                 
-                 // GST is now calculated on subtotal, not per item
-                 const itemTotal = item.totalPrice || item.price * item.quantity;
+                // Calculate discount for individual item: Original Price - Current Price
+                const originalTotal = item.originalPrice ? item.originalPrice * item.quantity : item.price * item.quantity;
+                const currentTotal = item.totalPrice || item.price * item.quantity;
+                const discount = Math.max(0, originalTotal - currentTotal);
+                
+                // GST is now calculated on subtotal, not per item
+                const itemTotal = item.totalPrice || item.price * item.quantity;
                 const imageSize = responsiveValue(80, 96, 100);
 
                 return (
@@ -451,22 +448,6 @@ export default function CartScreen({ navigation }) {
                 );
               })}
             </View>
-
-            {/* Promo Code Section */}
-            <View className="bg-white mx-4 mt-4 rounded-xl p-4 border border-gray-100">
-              <TouchableOpacity
-                className="flex-row items-center justify-between"
-                onPress={handlePromoCode}
-              >
-                <View className="flex-row items-center">
-                  <Tag size={responsiveValue(18, 20, 20)} color="#059669" />
-                  <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-700 ml-3`}>
-                    Apply Promo Code
-                  </Text>
-                </View>
-                <ChevronRight size={responsiveValue(18, 20, 20)} color="#059669" />
-              </TouchableOpacity>
-            </View>
           </>
         )}
       </ScrollView>
@@ -531,7 +512,7 @@ export default function CartScreen({ navigation }) {
                 Shipping
               </Text>
               <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-semibold text-gray-900`}>
-                ₹{getShipping().toFixed(2)}
+                ₹{getShipping(getSubtotal(safeCartItems)).toFixed(2)}
               </Text>
             </View>
             <View className="border-t border-gray-200 pt-2 mt-1">

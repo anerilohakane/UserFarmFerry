@@ -326,7 +326,7 @@ export const HeaderVariants = {
     <Header
       showLogo={true}
       showLocation={true}
-      showNotifications={true}
+      showNotifications={false}
       title="FarmFerry"
       {...props}
     />
