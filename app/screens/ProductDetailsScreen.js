@@ -139,26 +139,25 @@ const ProductDetailsScreen = ({ route, navigation }) => {
         </View> */}
 
         {/* Product Image */}
-        {/* Product Image */}
-<View className="w-full bg-gray-50 items-center justify-center py-6">
-  <View
-    className="bg-white rounded-3xl shadow-lg"
-    style={{
-      elevation: 8,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      transform: [{ translateY: -16 }],
-    }}
-  >
-    <Image
-      source={{ uri: product.image || (product.images && product.images[0]?.url) || 'https://via.placeholder.com/256?text=No+Image' }}
-      className="w-64 h-64 rounded-2xl"
-      resizeMode="cover" // Changed from 'contain' to 'cover'
-    />
-  </View>
-</View>
+        <View className="w-full bg-gray-50 items-center justify-center py-6">
+          <View
+            className="bg-white rounded-3xl shadow-lg"
+            style={{
+              elevation: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              transform: [{ translateY: -16 }],
+            }}
+          >
+            <Image
+              source={{ uri: product.image || (product.images && product.images[0]?.url) || 'https://via.placeholder.com/256?text=No+Image' }}
+              className="w-64 h-64 rounded-2xl"
+              resizeMode="cover"
+            />
+          </View>
+        </View>
 
         {/* Product Info */}
         <View className="bg-white p-6 mt-4 rounded-t-3xl shadow-sm">
@@ -196,7 +195,6 @@ const ProductDetailsScreen = ({ route, navigation }) => {
                 ({product.totalReviews || product.reviews || 0} reviews)
               </Text>
             </View>
-            {/* <Text className="text-sm text-gray-500">Available: {product.stockQuantity} {product.unit}</Text> */}
           </View>
 
           <View className="flex-row items-center mb-6">
@@ -273,10 +271,12 @@ const ProductDetailsScreen = ({ route, navigation }) => {
       {/* Action Buttons */}
       <View className="bg-white border-t border-gray-200 p-4 flex-row">
         <TouchableOpacity
-          className={`flex-1 justify-center items-center rounded-xl ml-0 shadow-sm ${isInCart ? '' : ''}`}
+          className={`flex-1 justify-center items-center rounded-xl ml-0 shadow-sm border-2 ${
+            isInCart ? 'border-gray-300' : ((typeof product.stockQuantity === 'number' ? product.stockQuantity : 0) > 0 || product.inStock) ? 'border-green-600' : 'border-red-500'
+          }`}
           onPress={handleAddToCart}
           disabled={isInCart || !((typeof product.stockQuantity === 'number' ? product.stockQuantity : 0) > 0 || product.inStock)}
-          style={{ overflow: 'hidden', height: 44 }}
+          style={{ height: 44 }}
         >
           {isInCart ? (
             <Text className="text-gray-600 text-lg font-semibold">Added to Cart</Text>
@@ -285,10 +285,7 @@ const ProductDetailsScreen = ({ route, navigation }) => {
               <Text className="text-red-500 text-lg font-semibold">Out of stock</Text>
             </View>
           ) : (
-            <LinearGradient
-              colors={["#fdba74", "#fb923c"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+            <View
               style={{
                 flex: 1,
                 width: '100%',
@@ -297,11 +294,12 @@ const ProductDetailsScreen = ({ route, navigation }) => {
                 justifyContent: 'center',
                 borderRadius: 12,
                 flexDirection: 'row',
+                backgroundColor: 'transparent',
               }}
             >
-              <Plus width={20} height={20} color="#fff" />
-              <Text className="text-white text-lg font-semibold ml-2">Add to Cart</Text>
-            </LinearGradient>
+              <Plus width={20} height={20} color="#059669" />
+              <Text className="text-green-600 text-lg font-semibold ml-2">Add to Cart</Text>
+            </View>
           )}
         </TouchableOpacity>
         <TouchableOpacity

@@ -562,24 +562,25 @@ const HomeScreen = ({ navigation }) => {
               </View>
             </View>
             <TouchableOpacity
-              className="overflow-hidden rounded-lg mt-2"
+              className={`overflow-hidden rounded-lg mt-2 border ${isOutOfStock ? 'border-red-500 bg-white' : inCart ? 'border-gray-300 bg-gray-100' : 'border-green-600'}`}
               onPress={(e) => {
                 e.stopPropagation();
                 handleAddToCart(item);
               }}
               disabled={inCart || isOutOfStock}
+              style={{ borderWidth: 1 }}
             >
               {inCart ? (
                 <View className="py-2 flex-row items-center justify-center bg-gray-100 rounded-lg">
                   <Text className="text-gray-500 font-semibold text-xs">Added</Text>
                 </View>
               ) : isOutOfStock ? (
-                <View className="py-2 flex-row items-center justify-center bg-gray-200 rounded-lg">
+                <View className="py-2 flex-row items-center justify-center bg-white rounded-lg">
                   <Text className="text-red-500 font-semibold text-xs">Out of stock</Text>
                 </View>
               ) : (
                 <LinearGradient
-                  colors={["#fdba74", "#fb923c"]}
+                  colors={['#10b981', '#059669']}
                   className="py-2 flex-row items-center justify-center rounded-lg"
                 >
                   <ShoppingCart width={14} height={14} color="#fff" />
@@ -588,7 +589,7 @@ const HomeScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              className="overflow-hidden rounded-lg mt-1.5 py-2 flex-row items-center justify-center"
+              className={`overflow-hidden rounded-lg mt-1.5 py-2 flex-row items-center justify-center border ${isOutOfStock ? 'bg-white' : ''}`}
               onPress={async (e) => {
                 e.stopPropagation();
                 setBuyNowPressedId(productId);
@@ -601,13 +602,12 @@ const HomeScreen = ({ navigation }) => {
                 }, 150);
               }}
               style={{
-                backgroundColor: isOutOfStock
-                  ? '#e5e7eb'
-                  : (buyNowPressedId === productId ? '#10b981': '#059669'),
+                borderWidth: 1,
+                borderColor: isOutOfStock ? '#ef4444' : '#059669',
               }}
               disabled={isOutOfStock}
             >
-              <Text className={`font-semibold ${responsiveValue('text-xs', 'text-sm', 'text-sm')} ${isOutOfStock ? 'text-red-500' : (buyNowPressedId === productId ? 'text-white' : 'text-white')}`}>
+              <Text className={`font-semibold ${responsiveValue('text-xs', 'text-sm', 'text-sm')} ${isOutOfStock ? 'text-red-500' : (buyNowPressedId === productId ? 'text-green-600' : 'text-green-600')}`}>
                 {isOutOfStock ? 'Out of stock' : 'Buy Now'}
               </Text>
             </TouchableOpacity>
@@ -720,7 +720,6 @@ const HomeScreen = ({ navigation }) => {
         {!isSearchActive ? (
           <>
             {/* Special Offers Carousel */}
-
             <View className={`h-16 mb-3`}>
               <Carousel
                 width={width}

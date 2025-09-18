@@ -783,6 +783,9 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                 overflow: "hidden",
                 borderRadius: 8,
                 marginBottom: 4,
+                borderWidth: 1,
+                borderColor: isOutOfStock ? "#ef4444" : "#059669",
+                backgroundColor: isOutOfStock ? "white" : inCart ? "white" : "white",
               }}
               onPress={(e) => {
                 e.stopPropagation()
@@ -797,7 +800,7 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: "#f3f4f6",
+                    backgroundColor: "white",
                     borderRadius: 8,
                   }}
                 >
@@ -810,15 +813,15 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: "#e5e7eb",
+                    backgroundColor: "white",
                     borderRadius: 8,
                   }}
                 >
-                  <Text style={{ color: "red", fontWeight: "600", fontSize: 11 }}>Out of stock</Text>
+                  <Text style={{ color: "#ef4444", fontWeight: "600", fontSize: 11 }}>Out of stock</Text>
                 </View>
               ) : (
                 <LinearGradient
-                  colors={["#fdba74", "#fb923c"]}
+                  colors={["#10b981", "#059669"]}
                   style={{
                     paddingVertical: 6,
                     flexDirection: "row",
@@ -836,13 +839,15 @@ const SubcategoriesScreen = ({ navigation, route }) => {
               <TouchableOpacity
                 style={{
                   flex: 1,
-                  backgroundColor: isOutOfStock ? "#e5e7eb" : (buyNowPressedId === productId ? '#10b981':'#059669'),
                   paddingVertical: 6,
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "center",
                   borderRadius: 8,
-                  shadowColor: "#d1d5db",
+                  borderWidth: 1,
+                  borderColor: isOutOfStock ? "#ef4444" : "#059669",
+                  backgroundColor: "white",
+                  shadowColor: "#000",
                   shadowOffset: { width: 0, height: 1 },
                   shadowOpacity: 0.1,
                   shadowRadius: 2,
@@ -863,12 +868,12 @@ const SubcategoriesScreen = ({ navigation, route }) => {
               >
                 <Text
                   style={{
-                    color: isOutOfStock ? "red" : (buyNowPressedId === productId ? "white" : "white"),
+                    color: isOutOfStock ? "#ef4444" : "#059669",
                     fontWeight: "600",
                     fontSize: 11,
                   }}
                 >
-                  {isOutOfStock ? 'Out of stock' : 'Buy Now'}
+                  {isOutOfStock ? "Out of stock" : "Buy Now"}
                 </Text>
               </TouchableOpacity>
 

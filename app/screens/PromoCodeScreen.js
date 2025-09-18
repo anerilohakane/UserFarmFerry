@@ -38,6 +38,33 @@ export default function PromoCodeScreen({ navigation }) {
     return large;
   };
 
+  // Responsive spacing helper
+  const responsiveSpacing = (small, medium, large) => responsiveValue(small, medium, large);
+
+  // Define responsive spacings
+  const screenPadding = responsiveSpacing(12, 16, 20);
+  const sectionPadding = responsiveSpacing(16, 20, 24);
+  const cardPadding = responsiveSpacing(12, 16, 20);
+  const cardMarginBottom = responsiveSpacing(12, 16, 20);
+  const sectionMarginBottom = responsiveSpacing(24, 32, 40);
+  const inputPaddingHorizontal = responsiveSpacing(12, 16, 20);
+  const inputPaddingVertical = responsiveSpacing(10, 12, 16);
+  const buttonPaddingHorizontal = responsiveSpacing(16, 20, 24);
+  const buttonPaddingVertical = responsiveSpacing(10, 12, 16);
+  const iconMarginRight = responsiveSpacing(8, 12, 16);
+  const smallPadding = responsiveSpacing(6, 8, 10);
+  const largePadding = responsiveSpacing(20, 24, 28);
+  const tagPaddingHorizontal = responsiveSpacing(10, 12, 16);
+  const tagPaddingVertical = responsiveSpacing(4, 6, 8);
+  const smallMargin = responsiveSpacing(4, 6, 8);
+  const mediumMarginBottom = responsiveSpacing(8, 12, 16);
+  const largeMarginTop = responsiveSpacing(12, 16, 20);
+  const loadingPaddingVertical = responsiveSpacing(24, 32, 40);
+  const headerPaddingVertical = responsiveSpacing(8, 12, 16);
+  const headerMarginRight = responsiveSpacing(12, 16, 20);
+  const textMarginBottom = responsiveSpacing(12, 16, 20);
+  const titleMarginBottom = responsiveSpacing(16, 20, 24);
+
   // Calculate cart total
   const getCartTotal = () => {
     if (!Array.isArray(cartItems)) return 0;
@@ -159,12 +186,24 @@ export default function PromoCodeScreen({ navigation }) {
       <TouchableOpacity
         onPress={() => canApply ? validateAndApplyCoupon(coupon.code) : null}
         disabled={!canApply || isLoading}
-        className={`bg-white rounded-xl p-4 mb-3 border ${canApply ? 'border-green-200' : 'border-gray-200'}`}
+        style={{
+          padding: cardPadding,
+          marginBottom: cardMarginBottom,
+          backgroundColor: 'white',
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: canApply ? '#dcfce7' : '#e5e7eb',
+        }}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-1">
-            <View className="flex-row items-center mb-2">
-              <View className={`p-2 rounded-lg mr-3 ${canApply ? 'bg-green-100' : 'bg-gray-100'}`}>
+            <View style={{ marginBottom: mediumMarginBottom }} className="flex-row items-center">
+              <View style={{
+                padding: smallPadding,
+                marginRight: iconMarginRight,
+                borderRadius: 8,
+                backgroundColor: canApply ? '#dcfce7' : '#f3f4f6',
+              }}>
                 <Tag size={responsiveValue(16, 18, 20)} color={canApply ? "#059669" : "#9ca3af"} />
               </View>
               <View className="flex-1">
@@ -195,15 +234,23 @@ export default function PromoCodeScreen({ navigation }) {
             
             {!canApply && (
               <Text 
-                className="text-red-500 mt-1"
-                style={{ fontSize: responsiveValue(10, 11, 12) }}
+                className="text-red-500"
+                style={{ 
+                  marginTop: smallMargin,
+                  fontSize: responsiveValue(10, 11, 12) 
+                }}
               >
                 Add ₹{(coupon.minPurchase || 0) - cartTotal} more to apply
               </Text>
             )}
           </View>
           
-          <View className={`px-3 py-1 rounded-full ${canApply ? 'bg-green-100' : 'bg-gray-100'}`}>
+          <View style={{
+            paddingHorizontal: tagPaddingHorizontal,
+            paddingVertical: tagPaddingVertical,
+            borderRadius: 9999,
+            backgroundColor: canApply ? '#dcfce7' : '#f3f4f6',
+          }}>
             <Text 
               className={`font-medium ${canApply ? 'text-green-600' : 'text-gray-400'}`}
               style={{ fontSize: responsiveValue(10, 11, 12) }}
@@ -221,10 +268,21 @@ export default function PromoCodeScreen({ navigation }) {
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
       
       {/* Header */}
-      <View className="bg-white px-4 py-3 flex-row items-center border-b border-gray-100">
+      <View 
+        className="bg-white flex-row items-center border-b border-gray-100"
+        // style={{
+        //   paddingHorizontal: screenPadding,
+        //   paddingVertical: headerPaddingVertical,
+        // }}
+      >
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          className="mr-4 p-2 -ml-2"
+          className="p-2 -ml-2"
+          style={{
+            padding: smallPadding,
+            marginLeft: -8,
+            marginRight: headerMarginRight,
+          }}
         >
           <ArrowLeft size={responsiveValue(20, 22, 24)} color="#374151" />
         </TouchableOpacity>
@@ -237,9 +295,15 @@ export default function PromoCodeScreen({ navigation }) {
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="p-4">
+        <View style={{ padding: screenPadding }}>
           {/* Cart Total Info */}
-          <View className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <View 
+            className="bg-blue-50 border border-blue-200 rounded-xl"
+            style={{
+              padding: sectionPadding,
+              marginBottom: sectionMarginBottom,
+            }}
+          >
             <Text 
               className="text-blue-800 font-semibold mb-1"
               style={{ fontSize: responsiveValue(14, 15, 16) }}
@@ -256,14 +320,23 @@ export default function PromoCodeScreen({ navigation }) {
 
           {/* Applied Coupon */}
           {appliedCoupon && (
-            <View className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+            <View 
+              className="bg-green-50 border border-green-200 rounded-xl"
+              style={{
+                padding: sectionPadding,
+                marginBottom: sectionMarginBottom,
+              }}
+            >
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
-                  <View className="flex-row items-center mb-2">
+                  <View style={{ marginBottom: mediumMarginBottom }} className="flex-row items-center">
                     <Check size={responsiveValue(18, 20, 22)} color="#059669" />
                     <Text 
                       className="text-green-800 font-semibold ml-2"
-                      style={{ fontSize: responsiveValue(14, 15, 16) }}
+                      style={{ 
+                        marginLeft: smallMargin * 2,
+                        fontSize: responsiveValue(14, 15, 16) 
+                      }}
                     >
                       Coupon Applied
                     </Text>
@@ -278,7 +351,7 @@ export default function PromoCodeScreen({ navigation }) {
                 <TouchableOpacity
                   onPress={removeCoupon}
                   disabled={isLoading}
-                  className="p-2"
+                  style={{ padding: smallPadding }}
                 >
                   <X size={responsiveValue(18, 20, 22)} color="#059669" />
                 </TouchableOpacity>
@@ -288,10 +361,19 @@ export default function PromoCodeScreen({ navigation }) {
 
           {/* Manual Coupon Entry */}
           {!appliedCoupon && (
-            <View className="bg-white rounded-xl p-4 mb-6 border border-gray-100">
+            <View 
+              className="bg-white rounded-xl border border-gray-100"
+              style={{
+                padding: sectionPadding,
+                marginBottom: sectionMarginBottom,
+              }}
+            >
               <Text 
-                className="text-gray-900 font-semibold mb-3"
-                style={{ fontSize: responsiveValue(14, 15, 16) }}
+                className="text-gray-900 font-semibold"
+                style={{ 
+                  marginBottom: textMarginBottom,
+                  fontSize: responsiveValue(14, 15, 16) 
+                }}
               >
                 Enter Coupon Code
               </Text>
@@ -302,8 +384,13 @@ export default function PromoCodeScreen({ navigation }) {
                   onChangeText={setCouponCode}
                   placeholder="Enter coupon code"
                   placeholderTextColor="#9ca3af"
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-3 mr-3"
-                  style={{ fontSize: responsiveValue(14, 15, 16) }}
+                  className="flex-1 border border-gray-300 rounded-lg"
+                  style={{ 
+                    paddingHorizontal: inputPaddingHorizontal,
+                    paddingVertical: inputPaddingVertical,
+                    marginRight: iconMarginRight,
+                    fontSize: responsiveValue(14, 15, 16),
+                  }}
                   autoCapitalize="characters"
                   editable={!isLoading}
                 />
@@ -311,11 +398,15 @@ export default function PromoCodeScreen({ navigation }) {
                 <TouchableOpacity
                   onPress={() => validateAndApplyCoupon(couponCode)}
                   disabled={isLoading || !couponCode.trim()}
-                  className={`px-6 py-3 rounded-lg ${
+                  className={`rounded-lg ${
                     isLoading || !couponCode.trim() 
                       ? 'bg-gray-300' 
                       : 'bg-green-600'
                   }`}
+                  style={{
+                    paddingHorizontal: buttonPaddingHorizontal,
+                    paddingVertical: buttonPaddingVertical,
+                  }}
                 >
                   {isLoading ? (
                     <ActivityIndicator size="small" color="white" />
@@ -333,24 +424,30 @@ export default function PromoCodeScreen({ navigation }) {
           )}
 
           {/* Available Coupons */}
-          <View className="mb-6">
+          <View style={{ marginBottom: sectionMarginBottom }}>
             <Text 
-              className="text-gray-900 font-semibold mb-4"
-              style={{ fontSize: responsiveValue(16, 17, 18) }}
+              className="text-gray-900 font-semibold"
+              style={{ 
+                marginBottom: titleMarginBottom,
+                fontSize: responsiveValue(16, 17, 18) 
+              }}
             >
               Available Coupons
             </Text>
             
             {loadingCoupons ? (
-              <View className="flex-row justify-center py-8">
+              <View className="flex-row justify-center" style={{ paddingVertical: loadingPaddingVertical }}>
                 <ActivityIndicator size="large" color="#059669" />
               </View>
             ) : availableCoupons.length === 0 ? (
-              <View className="bg-white rounded-xl p-6 items-center">
+              <View className="bg-white rounded-xl items-center" style={{ padding: largePadding }}>
                 <Gift size={responsiveValue(40, 45, 50)} color="#9ca3af" />
                 <Text 
-                  className="text-gray-500 mt-3 text-center"
-                  style={{ fontSize: responsiveValue(14, 15, 16) }}
+                  className="text-gray-500 text-center"
+                  style={{ 
+                    marginTop: largeMarginTop,
+                    fontSize: responsiveValue(14, 15, 16) 
+                  }}
                 >
                   No coupons available at the moment
                 </Text>
@@ -363,13 +460,19 @@ export default function PromoCodeScreen({ navigation }) {
           </View>
 
           {/* Info Section */}
-          <View className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <View 
+            className="bg-yellow-50 border border-yellow-200 rounded-xl"
+            style={{ padding: sectionPadding }}
+          >
             <View className="flex-row items-start">
               <AlertCircle size={responsiveValue(18, 20, 22)} color="#f59e0b" />
-              <View className="flex-1 ml-3">
+              <View style={{ marginLeft: iconMarginRight }} className="flex-1">
                 <Text 
                   className="text-yellow-800 font-semibold mb-1"
-                  style={{ fontSize: responsiveValue(13, 14, 15) }}
+                  style={{ 
+                    marginBottom: smallMargin,
+                    fontSize: responsiveValue(13, 14, 15) 
+                  }}
                 >
                   Coupon Terms
                 </Text>
