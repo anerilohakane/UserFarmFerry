@@ -29,6 +29,10 @@ import PaymentMethodsScreen from '../screens/PaymentMethodsScreen';
 import RateReviewScreen from '../screens/RateReviewScreen';
 import SupportScreen from '../screens/SupportScreen';
 
+// Coupon Screens
+import CouponsScreen from '../screens/CouponsScreen';
+import PromoCodeScreen from '../screens/PromoCodeScreen';
+
 // Loading Screen
 import AddAddressScreen from '../screens/AddAddressScreen';
 import LoadingScreen from '../screens/LoadingScreen';
@@ -197,6 +201,16 @@ const AppStack = () => (
     <Stack.Screen
       name="RazorpayTest"
       component={RazorpayTestScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="Coupons"
+      component={CouponsScreen}
+      options={{ headerShown: false }}
+    />
+    <Stack.Screen
+      name="PromoCodeScreen"
+      component={PromoCodeScreen}
       options={{ headerShown: false }}
     />
   </Stack.Navigator>

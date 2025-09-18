@@ -191,6 +191,15 @@ export const reviewsAPI = {
   addCustomerReply: (reviewId, replyData) => api.post(`/reviews/${reviewId}/customer-reply`, replyData),
 };
 
+// Coupon APIs
+export const couponAPI = {
+  getActiveCoupons: (params = {}) => api.get('/coupons/active', { params }),
+  getCouponByCode: (code) => api.get(`/coupons/code/${code}`),
+  validateCoupon: (data) => api.post('/coupons/validate', data),
+  applyCoupon: (data) => api.post('/coupons/apply', data),
+  removeCoupon: () => api.delete('/coupons/remove'),
+};
+
 // Advanced Delivery APIs
 export const advancedDeliveryAPI = {
   // Order Replacement
@@ -208,4 +217,4 @@ export const advancedDeliveryAPI = {
   getAnalytics: () => api.get('/advanced-delivery/analytics'),
 };
 
-export default api; 
+export default api;

@@ -182,7 +182,7 @@ const SettingScreen = () => {
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => {/* navigate to loyalty program */}}
+            onPress={() => navigation.navigate('Coupons')}
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Star size={20} color="#fde68a" />

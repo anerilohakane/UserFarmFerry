@@ -156,7 +156,7 @@ export default function CartScreen({ navigation }) {
     Alert.alert('Moved to Wishlist', `${product.name} has been moved to your wishlist`);
   };
 
-  const handlePromoCode = () => navigation.navigate('PromoCode');
+  const handlePromoCode = () => navigation.navigate('PromoCodeScreen');
   const handleChangeAddress = () => navigation.navigate('SetDefaultAddress');
 
   // GST rate (5%)

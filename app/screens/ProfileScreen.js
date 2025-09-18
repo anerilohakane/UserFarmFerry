@@ -639,7 +639,7 @@ const ProfileScreen = () => {
   const profileMenu = [
     { icon: Lock, label: 'Change Password', desc: 'Update your password', color: 'red', badge: null, onPress: () => navigation.navigate('ChangePassword') },
     { icon: Star, label: 'My Reviews', desc: 'View and manage your reviews', color: 'yellow', badge: null, onPress: () => navigation.navigate('MyReviews') },
-    { icon: Settings, label: 'Settings', desc: 'App preferences', color: 'indigo', badge: null, onPress: () => navigation.navigate('Settings') },
+    // { icon: Settings, label: 'Settings', desc: 'App preferences', color: 'indigo', badge: null, onPress: () => navigation.navigate('Settings') },
     { icon: Headphones, label: 'Help & Support', desc: 'Get assistance', color: 'teal', badge: null, onPress: () => navigation.navigate('Support') },
   ];
 
@@ -732,12 +732,12 @@ const ProfileScreen = () => {
                   {profileUser?.phone || customerData?.phone}
                 </Text>
               </View>
-              <View className="flex-row items-center justify-center">
+              {/* <View className="flex-row items-center justify-center">
                 <Mail size={isSmallScreen ? 10 : 12} color="#4b5563" />
                 <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500 ml-1`}>
                   {profileUser?.email || customerData?.email}
                 </Text>
-              </View>
+              </View> */}
               
               {/* Show address info if available */}
               {customerData?.addresses?.length > 0 && (
