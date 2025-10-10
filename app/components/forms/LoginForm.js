@@ -280,7 +280,7 @@
 
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal } from 'react-native';
 import { CONFIG } from '../../constants/config';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -291,14 +291,19 @@ const LoginForm = ({ onSuccess }) => {
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalOnOk, setModalOnOk] = useState(null);
   const { loginWithOTP } = useAuth();
   const navigation = useNavigation();
-
 
   // Step 1: Send OTP
   const handleSendOtp = async () => {
     if (!phone) {
-      Alert.alert('Error', 'Please enter your phone number');
+      setModalTitle('Error');
+      setModalMessage('Please enter your phone number');
+      setModalVisible(true);
       return;
     }
 
@@ -313,93 +318,100 @@ const LoginForm = ({ onSuccess }) => {
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert('Success', 'OTP sent to your phone.');
-        setShowOtpInput(true);
+        setModalTitle('Success');
+        setModalMessage('OTP sent to your phone.');
+        setModalOnOk(() => () => setShowOtpInput(true));
+        setModalVisible(true);
       } else {
-        Alert.alert('Error', data.message || 'Failed to send OTP.');
+        setModalTitle('Error');
+        setModalMessage(data.message || 'Failed to send OTP.');
+        setModalVisible(true);
       }
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      setModalTitle('Error');
+      setModalMessage('Something went wrong. Please try again.');
+      setModalVisible(true);
     } finally {
       setIsLoading(false);
     }
   };
 
   // Step 2: Verify OTP & Login
-  // const handleVerifyOtp = async () => {
-  //   if (!otp) {
-  //     Alert.alert('Error', 'Please enter the OTP');
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-  //   try {
-  //     const response = await fetch(`${CONFIG.API_BASE_URL}/auth/login/customer-otp`, {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ phone, otp }),
-  //     });
-
-  //     const data = await response.json();
-
-  //     if (response.ok) {
-  //       Alert.alert('Success', 'Logged in successfully!', [
-  //         {
-  //           text: 'OK',
-  //           onPress: () => {
-  //             navigation.reset({
-  //               index: 0,
-  //               routes: [{ name: SCREEN_NAMES.DASHBOARD }], // 👈 replace with your screen name
-  //             });
-  //           },
-  //         },
-  //       ]);
-  //       onSuccess?.(data); // still trigger callback if needed
-  //     } else {
-  //       Alert.alert('Login Failed', data.message || 'Invalid OTP');
-  //     }
-  //   } catch (error) {
-  //     Alert.alert('Error', 'Failed to verify OTP. Please try again.');
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const handleVerifyOtp = async () => {
     if (!otp) {
-      Alert.alert('Error', 'Please enter the OTP');
+      setModalTitle('Error');
+      setModalMessage('Please enter the OTP');
+      setModalVisible(true);
       return;
     }
 
     setIsLoading(true);
     try {
-      // Use the AuthContext loginWithOTP method instead of direct fetch
       const result = await loginWithOTP(phone, otp);
       
       if (result.success) {
-        Alert.alert('Success', 'Logged in successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              // AuthContext will automatically set isAuthenticated=true
-              // AppNavigator will switch from AuthStack to AppStack
-              // No manual navigation needed
-              onSuccess?.(result);
-            },
-          },
-        ]);
+        setModalTitle('Success');
+        setModalMessage('Logged in successfully!');
+        setModalOnOk(() => () => {
+          onSuccess?.(result);
+        });
+        setModalVisible(true);
       }
     } catch (error) {
-      Alert.alert('Login Failed', error.message || 'Failed to verify OTP. Please try again.');
+      setModalTitle('Login Failed');
+      setModalMessage(error.message || 'Failed to verify OTP. Please try again.');
+      setModalVisible(true);
     } finally {
       setIsLoading(false);
     }
   };
 
-
-
   return (
     <View style={{ width: '100%' }}>
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            borderRadius: 8,
+            padding: 20,
+            width: '80%',
+            alignItems: 'center',
+          }}>
+            <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
+              {modalTitle}
+            </Text>
+            <Text style={{ fontSize: 16, textAlign: 'center', marginBottom: 20 }}>
+              {modalMessage}
+            </Text>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#10b981',
+                borderRadius: 8,
+                padding: 12,
+                width: '50%',
+                alignItems: 'center',
+              }}
+              onPress={() => {
+                setModalVisible(false);
+                if (modalOnOk) modalOnOk();
+              }}
+            >
+              <Text style={{ color: 'white', fontWeight: '600' }}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {!showOtpInput ? (
         <>
           <View style={{ marginBottom: 24 }}>
@@ -524,7 +536,6 @@ const LoginForm = ({ onSuccess }) => {
       )}
     </View>
   );
-
 };
 
 export default LoginForm;

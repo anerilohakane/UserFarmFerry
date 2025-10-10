@@ -532,84 +532,44 @@ const SubcategoriesScreen = ({ navigation, route }) => {
     )
   }
 
-  const renderSubcategoryItem = ({ item }) => {
-    const isSelected =
-      selectedSubcategory && (selectedSubcategory._id === item._id || selectedSubcategory.id === item.id)
-
-    return (
-      <TouchableOpacity
-        onPress={() => {
-          console.log("🔄 Selecting subcategory:", item.name)
-          if (!isSelected) {
-            setProducts([])
-            setLoadingProducts(true)
-            setSelectedSubcategory(item)
-          }
-        }}
+  const renderSubcategoryItem = ({ item }) => (
+    <TouchableOpacity
+      onPress={() => {
+        setSelectedSubcategory(item)
+        setLoadingProducts(true)
+      }}
+      style={{
+        backgroundColor: selectedSubcategory?._id === item._id ? "#059669" : "#f3f4f6",
+        borderRadius: 9999,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        marginRight: 8,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+    >
+      <Text
         style={{
-          paddingVertical: 12,
-          paddingHorizontal: 12,
-          marginRight: 12,
-          backgroundColor: isSelected ? "#f0fdf4" : "white",
-          borderRadius: 12,
-          borderWidth: 2,
-          borderColor: isSelected ? "#10b981" : "#e5e7eb",
-          minWidth: 80,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 2,
+          color: selectedSubcategory?._id === item._id ? "white" : "#1f2937",
+          fontWeight: "600",
+          fontSize: 12,
         }}
       >
-        <View style={{ alignItems: "center" }}>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              overflow: "hidden",
-              marginBottom: 6,
-              backgroundColor: "#f3f4f6",
-            }}
-          >
-            <Image
-              source={
-                item.image && typeof item.image === "object" && item.image.url
-                  ? { uri: item.image.url }
-                  : item.image && typeof item.image === "string" && item.image.trim() !== ""
-                    ? { uri: item.image }
-                    : { uri: "https://via.placeholder.com/40" }
-              }
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
-            />
-          </View>
-
-          <Text
-            style={{
-              fontSize: 10,
-              fontWeight: isSelected ? "600" : "500",
-              color: isSelected ? "#10b981" : "#374151",
-              textAlign: "center",
-              lineHeight: 12,
-            }}
-            numberOfLines={2}
-          >
-            {item.name}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    )
-  }
+        {item.name}
+      </Text>
+    </TouchableOpacity>
+  )
 
   const renderProductItem = ({ item }) => {
     const productId = item._id || item.id
     const inWishlist = isInWishlist(productId)
     const inCart = isInCart(productId)
     const isOutOfStock = !item.inStock && !(item.stockQuantity > 0)
-    const isLowStock = !isOutOfStock && (typeof item.stockQuantity === 'number' ? item.stockQuantity : 0) > 0 && (typeof item.stockQuantity === 'number' ? item.stockQuantity : 0) <= 5
-    const isUpdatingRating = updatingRatings.has(productId)
+    const isLowStock = !isOutOfStock && item.stockQuantity > 0 && item.stockQuantity < 5
+    const isUpdatingRating = updatingRatings.has(productId) || updatingAllProducts
 
     return (
       <TouchableOpacity
@@ -623,6 +583,7 @@ const SubcategoriesScreen = ({ navigation, route }) => {
         }}
         activeOpacity={0.9}
         style={{ width: "48%", marginBottom: 16 }}
+        disabled={isOutOfStock}
       >
         <View
           style={{
@@ -636,20 +597,21 @@ const SubcategoriesScreen = ({ navigation, route }) => {
             elevation: 2,
             borderWidth: 1,
             borderColor: "#f3f4f6",
-            height: 250,
+            height: 280,
           }}
         >
           <View style={{ position: "relative" }}>
-            <Image source={{ uri: item.image }} style={{ width: "100%", height: 100 }} resizeMode="cover" />
-            <View
-              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.1)" }}
+            <Image source={{ uri: item.image }} style={{ width: "100%", height: 120 }} resizeMode="cover" />
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.05)"]}
+              className="absolute bottom-0 left-0 right-0 h-12"
             />
             {isOutOfStock ? (
               <View
                 style={{
                   position: "absolute",
-                  top: 8,
-                  left: 8,
+                  bottom: 8,
+                  right: 8,
                   backgroundColor: "#dc2626",
                   paddingHorizontal: 8,
                   paddingVertical: 4,
@@ -662,15 +624,15 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                 }}
               >
                 <Text style={{ color: "white", fontSize: 10, fontWeight: "bold" }}>
-                  Out of stock
+                  Out of Stock
                 </Text>
               </View>
             ) : item.discount && (
               <View
                 style={{
                   position: "absolute",
-                  top: 8,
-                  left: 8,
+                  bottom: 8,
+                  right: 8,
                   backgroundColor: "#ef4444",
                   paddingHorizontal: 8,
                   paddingVertical: 4,
@@ -779,13 +741,14 @@ const SubcategoriesScreen = ({ navigation, route }) => {
               {isUpdatingRating ? "Updating..." : `${item.reviews || 0} reviews`}
             </Text>
             <TouchableOpacity
+              className="overflow-hidden rounded-lg mt-2"
               style={{
-                overflow: "hidden",
-                borderRadius: 8,
-                marginBottom: 4,
-                borderWidth: 1,
-                borderColor: isOutOfStock ? "#ef4444" : "#059669",
-                backgroundColor: isOutOfStock ? "white" : inCart ? "white" : "white",
+                shadowColor: "#059669",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1.15,
+                shadowRadius: 4,
+                elevation: 2,
+                opacity: isOutOfStock ? 0.6 : 1,
               }}
               onPress={(e) => {
                 e.stopPropagation()
@@ -800,24 +763,11 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: "white",
+                    backgroundColor: "#f3f4f6",
                     borderRadius: 8,
                   }}
                 >
                   <Text style={{ color: "#6b7280", fontWeight: "600", fontSize: 11 }}>Added to Cart</Text>
-                </View>
-              ) : isOutOfStock ? (
-                <View
-                  style={{
-                    paddingVertical: 6,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "white",
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text style={{ color: "#ef4444", fontWeight: "600", fontSize: 11 }}>Out of stock</Text>
                 </View>
               ) : (
                 <LinearGradient
@@ -835,24 +785,9 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                 </LinearGradient>
               )}
             </TouchableOpacity>
-            <View style={{ flexDirection: "row", gap: 4 }}>
+            <View style={{ flexDirection: "row", gap: 4, marginTop: 4 }}>
               <TouchableOpacity
-                style={{
-                  flex: 1,
-                  paddingVertical: 6,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderRadius: 8,
-                  borderWidth: 1,
-                  borderColor: isOutOfStock ? "#ef4444" : "#059669",
-                  backgroundColor: "white",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 2,
-                  elevation: 1,
-                }}
+                className="overflow-hidden rounded-lg py-2 flex-row items-center justify-center border border-green-500 bg-white"
                 onPress={async (e) => {
                   e.stopPropagation()
                   setBuyNowPressedId(productId)
@@ -864,16 +799,20 @@ const SubcategoriesScreen = ({ navigation, route }) => {
                     })
                   }, 150)
                 }}
+                style={{
+                  flex: 1,
+                  opacity: isOutOfStock ? 0.6 : 1,
+                }}
                 disabled={isOutOfStock}
               >
                 <Text
                   style={{
-                    color: isOutOfStock ? "#ef4444" : "#059669",
+                    color: isOutOfStock ? "#059669" : "#059669",
                     fontWeight: "600",
                     fontSize: 11,
                   }}
                 >
-                  {isOutOfStock ? "Out of stock" : "Buy Now"}
+                  Buy Now
                 </Text>
               </TouchableOpacity>
 

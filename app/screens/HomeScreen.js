@@ -1,5 +1,7 @@
+"use client"
+
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowRight, ChevronRight, Filter, Heart, Leaf, Percent, Search as SearchIcon, ShoppingCart, Star, Truck, User, X } from 'lucide-react-native';
+import { ArrowRight, ChevronRight, Filter, Heart, Leaf, Percent, Search as SearchIcon, ShoppingCart, Star, Truck, User, X, Mic, Bell } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -11,9 +13,12 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  PermissionsAndroid,
+  Modal,
 } from 'react-native';
 import Animated, { SlideInDown, SlideInRight, SlideOutLeft, SlideOutUp } from 'react-native-reanimated';
+import Voice from '@react-native-voice/voice';
 import Carousel from 'react-native-reanimated-carousel';
 import Header, { HeaderVariants } from '../components/ui/Header';
 import { farmers } from '../components/ui/farmers';
@@ -38,6 +43,11 @@ const HomeScreen = ({ navigation }) => {
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [showCartNotification, setShowCartNotification] = useState(false);
   const [cartNotificationProduct, setCartNotificationProduct] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isVoiceAvailable, setIsVoiceAvailable] = useState(false);
+  const [alertQueue, setAlertQueue] = useState([]);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   // Get screen dimensions
   const { width, height } = Dimensions.get('window');
@@ -56,6 +66,125 @@ const HomeScreen = ({ navigation }) => {
   const responsivePadding = responsiveValue(3, 4, 5);
   const responsiveMargin = responsiveValue(2, 3, 4);
 
+  // Dynamically calculate number of categories to display based on screen width
+  const getVisibleCategoriesCount = () => {
+    if (width < 360) return 4; // Very small screens (e.g., older phones)
+    if (width < 375) return 6; // Small screens (e.g., iPhone SE)
+    if (width < 414) return 8; // Medium screens (e.g., iPhone XR)
+    if (width < 768) return 10; // Larger phones (e.g., iPhone 14 Pro Max)
+    return 12; // Tablets or very large screens
+  };
+
+  const visibleCategoriesCount = getVisibleCategoriesCount();
+
+  // Add alert to queue
+  const addAlert = (title, message) => {
+    setAlertQueue((prev) => [...prev, { id: Date.now(), title, message }]);
+  };
+
+  // Remove alert from queue
+  const removeAlert = (id) => {
+    setAlertQueue((prev) => prev.filter((alert) => alert.id !== id));
+  };
+
+  // Request microphone permission
+  const requestMicrophonePermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Microphone permission error:', err);
+        addAlert('Permission Error', 'Failed to request microphone permission.');
+        return false;
+      }
+    }
+    return true; // iOS handles permission via Info.plist
+  };
+
+  // Handle permission modal response
+  const handlePermissionResponse = async (allow) => {
+    setShowPermissionModal(false);
+    if (allow) {
+      const granted = await requestMicrophonePermission();
+      if (granted) {
+        try {
+          await Voice.start('en-US');
+        } catch (e) {
+          console.error('Speech recognition start error:', e);
+          setIsRecording(false);
+          addAlert('Speech Error', 'Failed to start speech recognition. Please ensure the microphone is working and try again.');
+        }
+      } else {
+        addAlert('Permission Denied', 'Microphone access is required for voice search.');
+        return false;
+      }
+      return true;
+    } else {
+      addAlert('Permission Denied', 'Microphone access is required for voice search.');
+      return false;
+    }
+  };
+
+  // Initialize Voice handlers
+  useEffect(() => {
+    // Check if Voice module is available
+    if (!Voice) {
+      console.error('Voice module is not available');
+      setIsVoiceAvailable(false);
+      addAlert('Voice Module Error', 'Voice recognition is not available on this device.');
+      return;
+    }
+
+    setIsVoiceAvailable(true);
+
+    Voice.onSpeechStart = () => {
+      setIsRecording(true);
+    };
+    Voice.onSpeechEnd = () => {
+      setIsRecording(false);
+    };
+    Voice.onSpeechResults = (e) => {
+      if (e.value && e.value.length > 0) {
+        setSearchQuery(e.value[0]);
+      }
+    };
+    Voice.onSpeechError = (e) => {
+      console.error('Speech recognition error:', e);
+      setIsRecording(false);
+      addAlert('Speech Error', 'Could not recognize speech. Please try again.');
+    };
+
+    return () => {
+      if (Voice) {
+        Voice.destroy().then(Voice.removeAllListeners);
+      }
+    };
+  }, []);
+
+  const startSpeechRecognition = async () => {
+    if (!isVoiceAvailable) {
+      addAlert('Voice Module Error', 'Voice recognition is not available on this device.');
+      return;
+    }
+
+    setShowPermissionModal(true);
+  };
+
+  const stopSpeechRecognition = async () => {
+    if (!isVoiceAvailable) return;
+
+    try {
+      await Voice.stop();
+    } catch (e) {
+      console.error('Speech recognition stop error:', e);
+      addAlert('Speech Error', 'Failed to stop speech recognition.');
+    }
+  };
+
+  // Fetch products
   useEffect(() => {
     (async () => {
       try {
@@ -89,7 +218,6 @@ const HomeScreen = ({ navigation }) => {
     try {
       setLoadingSearch(true);
       
-      // Fetch all products without category filtering to get comprehensive results
       const allProductsRes = await productsAPI.getProducts({ limit: 1000 });
       const allProducts = (allProductsRes?.data?.data?.products || []).map(p => ({
         ...p,
@@ -126,13 +254,11 @@ const HomeScreen = ({ navigation }) => {
         setIsSearchActive(true);
         setLoadingSearch(true);
         
-        // If we don't have all products cached, fetch them
         let allProducts = allCategoryProducts;
         if (allCategoryProducts.length === 0) {
           allProducts = await fetchAllProducts();
         }
         
-        // Search in all products (includes subcategory products)
         const searchResults = allProducts.filter(product => {
           const query = searchQuery.toLowerCase();
           return (
@@ -148,7 +274,6 @@ const HomeScreen = ({ navigation }) => {
       }
     };
     
-    // Debounce search to avoid too many API calls
     const searchTimeout = setTimeout(performSearch, 300);
     return () => clearTimeout(searchTimeout);
   }, [searchQuery, fetchedProducts, allCategoryProducts]);
@@ -188,7 +313,7 @@ const HomeScreen = ({ navigation }) => {
       icon: <Percent width={24} height={24} color="#fff" />,
       tag: 'Limited Time',
       gradient: 'bg-gradient-to-r from-green-500 to-emerald-700',
-      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXoXvo9LcdoOtIf2eedVwHvi2i01qVBIMrjQ&s',
+      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbnh=8N0V0qX0oXvo9LcdoOtIf2eedVwHvi2i01qVBIMrjQ&s',
     },
     {
       id: 2,
@@ -212,10 +337,10 @@ const HomeScreen = ({ navigation }) => {
       subtitle: '15% OFF on Organic',
       description: 'Premium quality organic produce',
       icon: <Leaf size={24} color="#fff" />,
-      bgColor: '#f0fdf4', // Light green background
-      borderColor: '#bbf7d0', // Light green border
-      iconBg: '#16a34a', // Green icon background
-      textColor: '#166534', // Dark green text
+      bgColor: '#f0fdf4',
+      borderColor: '#bbf7d0',
+      iconBg: '#16a34a',
+      textColor: '#166534',
       highlightText: 'ORGANIC15',
       cta: 'Shop Organic',
       ctaColor: '#fff',
@@ -227,10 +352,10 @@ const HomeScreen = ({ navigation }) => {
       subtitle: '10% OFF on First Order',
       description: 'Welcome discount for new customers',
       icon: <User size={24} color="#fff" />,
-      bgColor: '#eff6ff', // Light blue background
-      borderColor: '#dbeafe', // Light blue border
-      iconBg: '#2563eb', // Blue icon background
-      textColor: '#1e40af', // Dark blue text
+      bgColor: '#eff6ff',
+      borderColor: '#dbeafe',
+      iconBg: '#2563eb',
+      textColor: '#1e40af',
       highlightText: 'WELCOME10',
       cta: 'Start Shopping',
       ctaColor: '#fff',
@@ -242,10 +367,10 @@ const HomeScreen = ({ navigation }) => {
       subtitle: 'On orders above ₹500',
       description: 'No delivery charges for all orders',
       icon: <Truck size={24} color="#fff" />,
-      bgColor: '#fff7ed',  // Light orange background
-      borderColor: '#fed7aa', // Light orange border
-      iconBg: '#f97316', // Orange icon background
-      textColor: '#9a3412', // Dark orange text
+      bgColor: '#fff7ed',
+      borderColor: '#fed7aa',
+      iconBg: '#f97316',
+      textColor: '#9a3412',
       highlightText: 'FREESHIP',
       cta: 'Shop Now',
       ctaColor: '#fff',
@@ -305,7 +430,7 @@ const HomeScreen = ({ navigation }) => {
           <View className="flex-row justify-between items-center mt-6">
             <View
               className="rounded-lg px-3 py-2"
-              style={{ backgroundColor: `${item.iconBg}20` }} // 20% opacity of icon color
+              style={{ backgroundColor: `${item.iconBg}20` }}
             >
               <Text
                 className="font-bold text-xs"
@@ -377,11 +502,10 @@ const HomeScreen = ({ navigation }) => {
   const handleAddToCart = async (product) => {
     const productId = product._id || product.id;
     if (!product.inStock && !(product.stockQuantity > 0)) {
-      // Show error notification
       setCartNotificationProduct({ 
         name: 'Out of stock', 
         error: true, 
-        message: 'This product is currently out of stock' 
+        message: `${product.name} is currently out of stock` 
       });
       setShowCartNotification(true);
       setTimeout(() => setShowCartNotification(false), 3000);
@@ -392,18 +516,15 @@ const HomeScreen = ({ navigation }) => {
         const response = await cartAPI.addToCart({ productId, quantity: 1 });
         updateCartItems(response.data.data.cart.items);
         
-        // Show custom notification instead of Alert
         setCartNotificationProduct(product);
         setShowCartNotification(true);
         
-        // Auto hide after 3 seconds
         setTimeout(() => {
           setShowCartNotification(false);
         }, 3000);
       } catch (error) {
         console.error('Failed to add to cart:', error);
         
-        // Show error notification
         setCartNotificationProduct({ 
           name: 'Error', 
           error: true, 
@@ -507,6 +628,7 @@ const HomeScreen = ({ navigation }) => {
         onPress={() => navigation.navigate('ProductDetails', { product: item })}
         activeOpacity={0.9}
         className={`mb-2 mx-1 ${isLargeScreen ? 'w-[48%]' : 'w-[47%]'}`}
+        disabled={isOutOfStock}
       >
         <View className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
           <View className="relative">
@@ -516,18 +638,21 @@ const HomeScreen = ({ navigation }) => {
               style={{ height: productHeight }}
               resizeMode="cover"
             />
-            <View className="absolute inset-0 bg-black/20" />
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.05)"]}
+              className="absolute bottom-0 left-0 right-0 h-12"
+            />
             {isOutOfStock ? (
-              <View className="absolute top-2 left-2 bg-red-600 px-2 py-1 rounded-lg shadow-md">
-                <Text className="text-white text-xs font-bold">Out of stock</Text>
+              <View className="absolute bottom-2 right-2 bg-red-600 rounded-lg px-2 py-1">
+                <Text className="text-white text-xs font-bold">Out of Stock</Text>
               </View>
-            ) : item.discount && (
-              <View className="absolute top-2 left-2 bg-red-500 px-2 py-1 rounded-lg shadow-md">
-                <Text className="text-white text-xs font-bold">{Number(item.discount).toFixed(2)}% OFF</Text>
+            ) : item.discount ? (
+              <View className="absolute bottom-2 right-2 bg-emerald-500 rounded-lg px-2 py-1">
+                <Text className="text-white text-xs font-bold">{Number(item.discount).toFixed(0)}% OFF</Text>
               </View>
-            )}
+            ) : null}
             {isLowStock && (
-              <View className="absolute bottom-2 left-2 bg-amber-500 px-2 py-1 rounded-lg shadow-md">
+              <View className="absolute bottom-2 left-2 bg-amber-500 rounded-lg px-2 py-1">
                 <Text className="text-white text-xs font-bold">Only {item.stockQuantity} left</Text>
               </View>
             )}
@@ -562,21 +687,24 @@ const HomeScreen = ({ navigation }) => {
               </View>
             </View>
             <TouchableOpacity
-              className={`overflow-hidden rounded-lg mt-2 border ${isOutOfStock ? 'border-red-500 bg-white' : inCart ? 'border-gray-300 bg-gray-100' : 'border-green-600'}`}
+              className="overflow-hidden rounded-lg mt-2"
+              style={{
+                shadowColor: "#059669",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 1.15,
+                shadowRadius: 4,
+                elevation: 2,
+                opacity: isOutOfStock ? 0.6 : 1,
+              }}
               onPress={(e) => {
                 e.stopPropagation();
                 handleAddToCart(item);
               }}
               disabled={inCart || isOutOfStock}
-              style={{ borderWidth: 1 }}
             >
               {inCart ? (
                 <View className="py-2 flex-row items-center justify-center bg-gray-100 rounded-lg">
                   <Text className="text-gray-500 font-semibold text-xs">Added</Text>
-                </View>
-              ) : isOutOfStock ? (
-                <View className="py-2 flex-row items-center justify-center bg-white rounded-lg">
-                  <Text className="text-red-500 font-semibold text-xs">Out of stock</Text>
                 </View>
               ) : (
                 <LinearGradient
@@ -589,7 +717,7 @@ const HomeScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              className={`overflow-hidden rounded-lg mt-1.5 py-2 flex-row items-center justify-center border ${isOutOfStock ? 'bg-white' : ''}`}
+              className="overflow-hidden rounded-lg mt-1.5 py-2 flex-row items-center justify-center border border-green-500 bg-white"
               onPress={async (e) => {
                 e.stopPropagation();
                 setBuyNowPressedId(productId);
@@ -602,13 +730,12 @@ const HomeScreen = ({ navigation }) => {
                 }, 150);
               }}
               style={{
-                borderWidth: 1,
-                borderColor: isOutOfStock ? '#ef4444' : '#059669',
+                opacity: isOutOfStock ? 0.6 : 1,
               }}
               disabled={isOutOfStock}
             >
-              <Text className={`font-semibold ${responsiveValue('text-xs', 'text-sm', 'text-sm')} ${isOutOfStock ? 'text-red-500' : (buyNowPressedId === productId ? 'text-green-600' : 'text-green-600')}`}>
-                {isOutOfStock ? 'Out of stock' : 'Buy Now'}
+              <Text className={`font-semibold ${responsiveValue('text-xs', 'text-sm', 'text-sm')} ${isOutOfStock ? 'text-green-500' : (buyNowPressedId === productId ? 'text-green-600' : 'text-green-600')}`}>
+                Buy Now
               </Text>
             </TouchableOpacity>
           </View>
@@ -661,12 +788,17 @@ const HomeScreen = ({ navigation }) => {
               <View className="flex-1">
                 <Text className="text-white font-bold text-sm">
                   {cartNotificationProduct?.error 
-                    ? cartNotificationProduct.message 
+                    ? cartNotificationProduct.name 
                     : 'Added to Cart'}
                 </Text>
                 {!cartNotificationProduct?.error && (
                   <Text className="text-white/90 text-xs mt-1">
                     {cartNotificationProduct.name} has been added to your cart
+                  </Text>
+                )}
+                {cartNotificationProduct?.error && (
+                  <Text className="text-white/90 text-xs mt-1">
+                    {cartNotificationProduct.message}
                   </Text>
                 )}
               </View>
@@ -681,29 +813,124 @@ const HomeScreen = ({ navigation }) => {
         </Animated.View>
       )}
 
-      {/* Header */}
+      {/* Alert Modal */}
+      <Modal
+        visible={showAlertModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAlertModal(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-end">
+          <View className="bg-white rounded-t-2xl p-4 max-h-[80%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-gray-800">Alerts</Text>
+              <TouchableOpacity onPress={() => setShowAlertModal(false)}>
+                <X width={24} height={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+            {alertQueue.length === 0 ? (
+              <Text className="text-gray-500 text-center">No alerts to display</Text>
+            ) : (
+              <ScrollView>
+                {alertQueue.map((alert) => (
+                  <View key={alert.id} className="mb-4 p-3 bg-gray-100 rounded-lg">
+                    <Text className="text-sm font-semibold text-gray-800">{alert.title}</Text>
+                    <Text className="text-xs text-gray-600 mt-1">{alert.message}</Text>
+                    <TouchableOpacity
+                      className="mt-2 bg-red-500 rounded-lg px-3 py-1 self-start"
+                      onPress={() => removeAlert(alert.id)}
+                    >
+                      <Text className="text-white text-xs font-semibold">Dismiss</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Microphone Permission Modal */}
+      <Modal
+        visible={showPermissionModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => handlePermissionResponse(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <View className="bg-white rounded-2xl p-6 w-[90%] max-w-[400px]">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-lg font-bold text-gray-800">Microphone Permission</Text>
+              <TouchableOpacity onPress={() => handlePermissionResponse(false)}>
+                <X width={24} height={24} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
+            <Text className="text-sm text-gray-600 mb-6">
+              This app needs access to your microphone for voice search. Would you like to grant permission?
+            </Text>
+            <View className="flex-row justify-end gap-4">
+              <TouchableOpacity
+                className="bg-gray-200 rounded-lg px-4 py-2"
+                onPress={() => handlePermissionResponse(false)}
+              >
+                <Text className="text-gray-800 font-semibold text-sm">Deny</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="bg-green-500 rounded-lg px-4 py-2"
+                onPress={() => handlePermissionResponse(true)}
+              >
+                <Text className="text-white font-semibold text-sm">Allow</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <HeaderVariants.Main />
 
-      {/* Search Bar */}
       <View className={`px-${responsivePadding} pt-2 pb-2`}>
-        <View className={`flex-row items-center bg-white rounded-xl px-${responsivePadding} py-3 shadow-sm border border-gray-200`}>
-          <SearchIcon width={20} height={20} color="#6b7280" />
-          <TextInput
-            placeholder="Search fresh produce, grains, organic foods..."
-            placeholderTextColor="#94a3b8"
-            className={`flex-1 ml-3 text-gray-800 ${responsiveValue('text-xs', 'text-sm', 'text-sm')}`}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-          />
-          <View className="w-px h-6 bg-gray-200 mx-3" />
-          <TouchableOpacity className="p-1">
-            <Filter width={18} height={18} color="#94a3b8" />
+        <View className="flex-row items-center justify-between">
+          <View className={`flex-row items-center bg-white rounded-xl px-${responsivePadding} py-3 shadow-sm border border-gray-200 flex-1`}>
+            <SearchIcon width={20} height={20} color="#6b7280" />
+            <TextInput
+              placeholder="Search fresh produce, grains, organic foods..."
+              placeholderTextColor="#94a3b8"
+              className={`flex-1 ml-3 text-gray-800 ${responsiveValue('text-xs', 'text-sm', 'text-sm')}`}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+            />
+            <View className="w-px h-6 bg-gray-200 mx-3" />
+            <TouchableOpacity 
+              className="p-1"
+              onPress={isRecording ? stopSpeechRecognition : startSpeechRecognition}
+              disabled={!isVoiceAvailable}
+            >
+              <Mic 
+                width={18} 
+                height={18} 
+                color={isVoiceAvailable ? (isRecording ? "#ef4444" : "#94a3b8") : "#d1d5db"} 
+              />
+            </TouchableOpacity>
+            <View className="w-px h-6 bg-gray-200 mx-3" />
+            <TouchableOpacity className="p-1">
+              <Filter width={18} height={18} color="#94a3b8" />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity 
+            className="ml-2 p-2 bg-white rounded-xl shadow-sm border border-gray-200"
+            onPress={() => setShowAlertModal(true)}
+          >
+            <Bell width={18} height={18} color={alertQueue.length > 0 ? "#ef4444" : "#94a3b8"} />
+            {alertQueue.length > 0 && (
+              <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 flex items-center justify-center">
+                <Text className="text-white text-xs">{alertQueue.length}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Main Content */}
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -719,7 +946,6 @@ const HomeScreen = ({ navigation }) => {
       >
         {!isSearchActive ? (
           <>
-            {/* Special Offers Carousel */}
             <View className={`h-16 mb-3`}>
               <Carousel
                 width={width}
@@ -770,7 +996,6 @@ const HomeScreen = ({ navigation }) => {
                 }}
               />
             </View>
-            {/* Categories */}
             <View className={`px-${responsivePadding} mb-6`}>
               <View className="flex-row justify-between items-center mb-4">
                 <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800`}>Shop by Category</Text>
@@ -782,14 +1007,13 @@ const HomeScreen = ({ navigation }) => {
                 <Text>Loading categories...</Text>
               ) : (
                 <View className="flex-row flex-wrap justify-between">
-                  {categories.slice(0, 6).map((item, index) => (
+                  {categories.slice(0, visibleCategoriesCount).map((item, index) => (
                     <CategoryItem key={item._id || item.id || index} item={item} />
                   ))}
                 </View>
               )}
             </View>
 
-            {/* Banner */}
             <View className={`h-64 rounded-2xl overflow-hidden mx-${responsivePadding} mb-6 shadow-md`}>
               <Image
                 source={{ uri: banners[currentBanner].image }}
@@ -837,29 +1061,9 @@ const HomeScreen = ({ navigation }) => {
                 ))}
               </View>
             </View>
-
-            {/* Farmers */}
-            <View className={`px-${responsivePadding} mb-6`}>
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800`}>Popular Farmers</Text>
-                <TouchableOpacity className="flex-row items-center">
-                  <Text className="text-green-600 font-semibold text-sm mr-1">View All</Text>
-                  <ChevronRight width={14} height={14} color="#16a34a" />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={farmers}
-                renderItem={renderFarmerItem}
-                keyExtractor={(item, index) => index.toString()}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: responsivePadding * 4 }}
-              />
-            </View>
           </>
         ) : null}
 
-        {/* Featured Products - Always visible but shows search results when searching */}
         <View
           onLayout={event => setFeaturedProductsY(event.nativeEvent.layout.y)}
           className={`px-${responsivePadding} mb-6`}
@@ -871,10 +1075,8 @@ const HomeScreen = ({ navigation }) => {
             </View>
           ) : (
             <View className="flex-row justify-between items-center mb-4">
-              <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800`}>Featured Products</Text>
+              <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800`}>Today’s Smart Saves</Text>
               <TouchableOpacity className="flex-row items-center">
-                <Text className="text-green-600 font-semibold text-sm mr-1">View All</Text>
-                <ChevronRight width={14} height={14} color="#16a34a" />
               </TouchableOpacity>
             </View>
           )}
@@ -892,7 +1094,7 @@ const HomeScreen = ({ navigation }) => {
             </View>
           ) : (
             <FlatList
-              data={filteredProducts}
+              data={isSearchActive ? filteredProducts : filteredProducts.filter(product => product.discount && product.discount > 0)}
               renderItem={renderProductItem}
               keyExtractor={(item) => (item._id || item.id).toString()}
               numColumns={2}

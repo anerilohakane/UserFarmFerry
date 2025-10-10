@@ -1,18 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  ArrowLeft, ChevronRight, Heart, MapPin, Minus,
-  Plus, Tag, Trash2
-} from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, Heart, MapPin, Minus, Plus, Tag, Trash2 } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   Image,
+  Modal,
   RefreshControl,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   Text,
   TouchableOpacity,
   View
@@ -31,9 +27,15 @@ export default function CartScreen({ navigation }) {
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  // Add GST and GST percent from backend
   const [cartGST, setCartGST] = useState(0);
   const [cartGSTPercent, setCartGSTPercent] = useState(0);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: '',
+    message: '',
+    confirmText: '',
+    onConfirm: () => {},
+  });
 
   // Get screen dimensions
   const { width, height } = Dimensions.get('window');
@@ -55,11 +57,9 @@ export default function CartScreen({ navigation }) {
       const response = await cartAPI.getCart();
       const cartData = response.data.data.cart;
       const items = cartData.items;
-      // Set GST and GST percent from backend if present
       setCartGST(cartData.gst || 0);
       setCartGSTPercent(cartData.gstPercent || 0);
       
-      // Detailed logging for GST debugging
       console.log('=== CART DATA DEBUG ===');
       console.log('Full cart response:', JSON.stringify(response.data.data.cart, null, 2));
       
@@ -113,29 +113,62 @@ export default function CartScreen({ navigation }) {
     if (item.quantity > 1) {
       handleUpdateQuantity(item._id, item.quantity - 1);
     } else {
-      removeFromCart(item._id);
+      const productName = item.product?.name || item.name;
+      removeFromCart(item._id, productName);
     }
   };
 
-  const removeFromCart = async (cartItemId) => {
-    try {
-      const response = await cartAPI.removeCartItem(cartItemId);
-      updateCartItems(response.data.data.cart.items);
-    } catch (error) {
-      console.error('Failed to remove from cart:', error);
-    }
+  const removeFromCart = async (cartItemId, productName) => {
+    setModalConfig({
+      title: 'Remove Item',
+      message: `Are you sure you want to remove "${productName}" from your cart?`,
+      confirmText: 'Remove',
+      onConfirm: async () => {
+        try {
+          const response = await cartAPI.removeCartItem(cartItemId);
+          updateCartItems(response.data.data.cart.items);
+          setModalConfig({
+            title: 'Removed',
+            message: `${productName} has been removed from your cart`,
+            confirmText: 'OK',
+            onConfirm: () => setModalVisible(false),
+          });
+        } catch (error) {
+          console.error('Failed to remove from cart:', error);
+          setModalConfig({
+            title: 'Error',
+            message: 'Failed to remove item from cart. Please try again.',
+            confirmText: 'OK',
+            onConfirm: () => setModalVisible(false),
+          });
+        }
+      },
+    });
+    setModalVisible(true);
   };
 
   const toggleWishlist = (product) => {
     if (!product || !product.name) return;
     const productId = product._id;
+    const productName = product.name;
     if (isInWishlist(productId)) {
       removeFromWishlist(productId);
-      Alert.alert('Removed from Wishlist', `${product.name} has been removed from your wishlist`);
+      setModalConfig({
+        title: 'Removed from Wishlist',
+        message: `${productName} has been removed from your wishlist`,
+        confirmText: 'OK',
+        onConfirm: () => setModalVisible(false),
+      });
     } else {
       addToWishlist(product);
-      Alert.alert('Added to Wishlist', `${product.name} has been added to your wishlist`);
+      setModalConfig({
+        title: 'Added to Wishlist',
+        message: `${productName} has been added to your wishlist`,
+        confirmText: 'OK',
+        onConfirm: () => setModalVisible(false),
+      });
     }
+    setModalVisible(true);
   };
 
   const isInWishlist = (id) => {
@@ -149,26 +182,24 @@ export default function CartScreen({ navigation }) {
   const moveToWishlist = (product) => {
     if (!product || !product.name) return;
     const productId = product._id;
+    const productName = product.name;
     if (!isInWishlist(productId)) {
       addToWishlist(product);
     }
-    removeFromCart(product._id);
-    Alert.alert('Moved to Wishlist', `${product.name} has been moved to your wishlist`);
+    removeFromCart(product._id, productName);
   };
 
   const handlePromoCode = () => navigation.navigate('PromoCodeScreen');
   const handleChangeAddress = () => navigation.navigate('SetDefaultAddress');
 
-  // GST rate (5%)
   const GST_RATE = 0.05;
-  // Platform fee constant
   const PLATFORM_FEE = 2.0;
 
-  // GST and cart logic from CheckoutScreen
   const getSubtotal = (items) => items.reduce((sum, item) => {
     const price = item.discountedPrice !== undefined && item.discountedPrice !== null ? item.discountedPrice : item.price;
     return sum + price * item.quantity;
   }, 0);
+  
   const getTotalDiscount = (items) => {
     const totalOriginalPrice = items.reduce((sum, item) => {
       const orig = item.originalPrice !== undefined && item.originalPrice !== null ? item.originalPrice : item.price;
@@ -177,8 +208,8 @@ export default function CartScreen({ navigation }) {
     const subtotal = getSubtotal(items);
     return Math.max(0, totalOriginalPrice - subtotal);
   };
+  
   const getTotalGST = (items) => {
-    // Sum GST for each item
     return items.reduce((sum, item) => {
       const itemPrice = item.discountedPrice !== undefined && item.discountedPrice !== null ? item.discountedPrice : item.price;
       const itemQuantity = item.quantity || 1;
@@ -192,11 +223,13 @@ export default function CartScreen({ navigation }) {
       return sum + gstAmount;
     }, 0);
   };
+  
   const getShipping = (subtotal = 0) => {
-    // Waive delivery charges for orders above ₹500
     return subtotal >= 500 ? 0 : 20.0;
   };
+  
   const getPlatformFee = () => PLATFORM_FEE;
+  
   const getGrandTotal = (items) => {
     const subtotal = getSubtotal(items);
     return subtotal + getTotalGST(items) + getShipping(subtotal) + getPlatformFee();
@@ -212,7 +245,13 @@ export default function CartScreen({ navigation }) {
 
   const handleProceedToCheckout = () => {
     if (!Array.isArray(safeCartItems) || safeCartItems.length === 0) {
-      Alert.alert('Cart is empty');
+      setModalConfig({
+        title: 'Cart is Empty',
+        message: 'Your cart is empty. Add some items to proceed to checkout.',
+        confirmText: 'OK',
+        onConfirm: () => setModalVisible(false),
+      });
+      setModalVisible(true);
       return;
     }
     
@@ -244,34 +283,62 @@ export default function CartScreen({ navigation }) {
     });
   };
 
+  // Calculate checkout bar height dynamically
+  const checkoutBarHeight = (safeCartItems?.length ?? 0) > 0 
+    ? responsiveValue(320, 360, 380) 
+    : 0;
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <HeaderVariants.Back title="Cart" />
+      {/* Custom Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/50">
+          <View className={`bg-white rounded-xl p-6 mx-4 ${responsiveValue('w-11/12', 'w-3/4', 'w-2/3')} max-w-md shadow-lg`}>
+            <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800 mb-2`}>
+              {modalConfig.title}
+            </Text>
+            <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-600 mb-6`}>
+              {modalConfig.message}
+            </Text>
+            <View className="flex-row justify-end space-x-4">
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                className="px-4 py-2 rounded-lg bg-gray-200"
+              >
+                <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-800 font-semibold`}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  modalConfig.onConfirm();
+                  if (modalConfig.confirmText !== 'OK') setModalVisible(false);
+                }}
+                className="px-4 py-2 rounded-lg bg-red-500"
+              >
+                <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-white font-semibold`}>
+                  {modalConfig.confirmText}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
-      {/* Deliver to block */}
-      {/* <View className={`bg-white px-4 ${responsiveValue('py-2', 'py-3', 'py-3')} border-b border-gray-100`}>
-        <TouchableOpacity 
-          className="flex-row items-center" 
-          onPress={handleChangeAddress}
-        >
-          <MapPin size={responsiveValue(16, 18, 20)} color="#059669" />
-          <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-700 ml-2`}>
-            Deliver to 
-          </Text>
-          <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-semibold text-gray-900 ml-1`}>
-            Selected Location
-          </Text>
-          <ChevronRight size={responsiveValue(16, 18, 20)} color="#059669" className="ml-1" />
-        </TouchableOpacity>
-        <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-500 mt-1 ml-8`}>
-          Mokarwadi, Pune - 411046
-        </Text>
-      </View> */}
+      <HeaderVariants.Back title="Cart" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: responsiveValue(140, 160, 180) }}
+        contentContainerStyle={{ 
+          paddingBottom: checkoutBarHeight,
+          flexGrow: 1
+        }}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -279,6 +346,8 @@ export default function CartScreen({ navigation }) {
             colors={["#059669"]} 
           />
         }
+        bounces={true}
+        overScrollMode="always"
       >
         {(safeCartItems?.length ?? 0) === 0 ? (
           <View className="flex-1 items-center justify-center mt-20">
@@ -314,12 +383,10 @@ export default function CartScreen({ navigation }) {
             <View className={`px-4 ${responsiveValue('pt-3', 'pt-4', 'pt-4')}`}>
               {safeCartItems.map((item) => {
                 if (!item) return null;
-                // Calculate discount for individual item: Original Price - Current Price
                 const originalTotal = item.originalPrice ? item.originalPrice * item.quantity : item.price * item.quantity;
                 const currentTotal = item.totalPrice || item.price * item.quantity;
                 const discount = Math.max(0, originalTotal - currentTotal);
                 
-                // GST is now calculated on subtotal, not per item
                 const itemTotal = item.totalPrice || item.price * item.quantity;
                 const imageSize = responsiveValue(80, 96, 100);
 
@@ -350,12 +417,13 @@ export default function CartScreen({ navigation }) {
                             {item.product?.name || item.name}
                           </Text>
                           <TouchableOpacity 
-                            onPress={() => removeFromCart(item._id)}
+                            onPress={() => removeFromCart(item._id, item.product?.name || item.name)}
                             className="ml-2"
                           >
                             <Trash2 size={responsiveValue(18, 20, 20)} color="#ef4444" />
                           </TouchableOpacity>
                         </View>
+                        
                         {/* Per-item GST display */}
                         <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-blue-500 mb-1`}>
                           GST: ₹{(() => {
@@ -475,7 +543,6 @@ export default function CartScreen({ navigation }) {
             <View className="flex-row justify-between items-center mb-1">
               <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-600`}>
                 GST
-                {/* Show GST range if multiple rates, as in CheckoutScreen */}
                 {(() => {
                   const gstRates = [...new Set(safeCartItems.map(item => {
                     if (item.product && typeof item.product === 'object') {
@@ -483,7 +550,7 @@ export default function CartScreen({ navigation }) {
                     } else if (item.gst !== undefined) {
                       return item.gst;
                     }
-                    return 5; // default
+                    return 5;
                   }))];
                   if (gstRates.length === 1) {
                     return ` (${gstRates[0]}%)`;
