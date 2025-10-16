@@ -637,10 +637,11 @@ const ProfileScreen = () => {
   };
 
   const profileMenu = [
-    // { icon: Lock, label: 'Change Password', desc: 'Update your password', color: 'red', badge: null, onPress: () => navigation.navigate('ChangePassword') },
+    // { icon: Lock, label: 'Privacy Policy', desc: 'Update your password', color: 'red', badge: null, onPress: () => navigation.navigate('ChangePassword') },
     { icon: Star, label: 'My Reviews', desc: 'View and manage your reviews', color: 'yellow', badge: null, onPress: () => navigation.navigate('MyReviews') },
+    { icon: Lock, label: 'Privacy Canter', desc: 'Terms, Policies and Licenses', color: 'red', badge: null, onPress: () => navigation.navigate('ChangePassword') },
     // { icon: Settings, label: 'Settings', desc: 'App preferences', color: 'indigo', badge: null, onPress: () => navigation.navigate('Settings') },
-    { icon: Headphones, label: 'Help & Support', desc: 'Get assistance', color: 'teal', badge: null, onPress: () => navigation.navigate('Support') },
+    { icon: Headphones, label: 'Browse FAQs', desc: 'Get assistance', color: 'teal', badge: null, onPress: () => navigation.navigate('Support') },
   ];
 
   const renderProfileTab = () => (

@@ -226,7 +226,7 @@ const SettingScreen = () => {
             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Lock size={20} color="#dc2626" />
-              <Text style={{ marginLeft: 14, fontSize: 16, color: '#1f2937' }}>Change Password</Text>
+              <Text style={{ marginLeft: 14, fontSize: 16, color: '#1f2937' }}>Privacy Policy </Text>
             </View>
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>

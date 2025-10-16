@@ -1,7 +1,7 @@
 "use client"
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowRight, ChevronRight, Filter, Heart, Leaf, Percent, Search as SearchIcon, ShoppingCart, Star, Truck, User, X, Mic, Bell } from 'lucide-react-native';
+import { ArrowRight, ChevronRight, Filter, Heart, Leaf, Percent, Search as SearchIcon, ShoppingCart, Star, Truck, User, X, Mic, Bell, AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -16,14 +16,26 @@ import {
   View,
   PermissionsAndroid,
   Modal,
+  Alert,
 } from 'react-native';
-import Animated, { SlideInDown, SlideInRight, SlideOutLeft, SlideOutUp } from 'react-native-reanimated';
-import Voice from '@react-native-voice/voice';
+import Animated, { SlideInDown, SlideInRight, SlideOutLeft, SlideOutUp, FadeIn, FadeOut } from 'react-native-reanimated';
 import Carousel from 'react-native-reanimated-carousel';
 import Header, { HeaderVariants } from '../components/ui/Header';
 import { farmers } from '../components/ui/farmers';
 import { useAppContext } from '../context/AppContext';
 import { cartAPI, categoriesAPI, productsAPI } from '../services/api';
+
+// Voice recognition setup with fallbacks
+let Voice = null;
+let isVoiceModuleLoaded = false;
+
+try {
+  Voice = require('@react-native-voice/voice');
+  isVoiceModuleLoaded = true;
+  console.log('Voice module loaded successfully');
+} catch (error) {
+  console.warn('Voice module not available, using fallback:', error);
+}
 
 const HomeScreen = ({ navigation }) => {
   const [currentBanner, setCurrentBanner] = useState(0);
@@ -45,9 +57,13 @@ const HomeScreen = ({ navigation }) => {
   const [cartNotificationProduct, setCartNotificationProduct] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isVoiceAvailable, setIsVoiceAvailable] = useState(false);
-  const [alertQueue, setAlertQueue] = useState([]);
-  const [showAlertModal, setShowAlertModal] = useState(false);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [alerts, setAlerts] = useState([]);
+  const [voiceResults, setVoiceResults] = useState([]);
+  const [showVoiceResults, setShowVoiceResults] = useState(false);
+  const [voiceInitialized, setVoiceInitialized] = useState(false);
+  const [recordingTimer, setRecordingTimer] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [loadingVoiceResults, setLoadingVoiceResults] = useState(false);
 
   // Get screen dimensions
   const { width, height } = Dimensions.get('window');
@@ -68,121 +84,490 @@ const HomeScreen = ({ navigation }) => {
 
   // Dynamically calculate number of categories to display based on screen width
   const getVisibleCategoriesCount = () => {
-    if (width < 360) return 4; // Very small screens (e.g., older phones)
-    if (width < 375) return 6; // Small screens (e.g., iPhone SE)
-    if (width < 414) return 8; // Medium screens (e.g., iPhone XR)
-    if (width < 768) return 10; // Larger phones (e.g., iPhone 14 Pro Max)
-    return 12; // Tablets or very large screens
+    if (width < 360) return 4;
+    if (width < 375) return 6;
+    if (width < 414) return 8;
+    if (width < 768) return 10;
+    return 12;
   };
 
   const visibleCategoriesCount = getVisibleCategoriesCount();
 
-  // Add alert to queue
-  const addAlert = (title, message) => {
-    setAlertQueue((prev) => [...prev, { id: Date.now(), title, message }]);
-  };
-
-  // Remove alert from queue
-  const removeAlert = (id) => {
-    setAlertQueue((prev) => prev.filter((alert) => alert.id !== id));
-  };
-
-  // Request microphone permission
-  const requestMicrophonePermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
+  // Fuzzy search utility functions
+  const levenshteinDistance = (str1, str2) => {
+    const track = Array(str2.length + 1).fill(null).map(() =>
+      Array(str1.length + 1).fill(null));
+    for (let i = 0; i <= str1.length; i += 1) {
+      track[0][i] = i;
+    }
+    for (let j = 0; j <= str2.length; j += 1) {
+      track[j][0] = j;
+    }
+    for (let j = 1; j <= str2.length; j += 1) {
+      for (let i = 1; i <= str1.length; i += 1) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        track[j][i] = Math.min(
+          track[j][i - 1] + 1,
+          track[j - 1][i] + 1,
+          track[j - 1][i - 1] + indicator,
         );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.warn('Microphone permission error:', err);
-        addAlert('Permission Error', 'Failed to request microphone permission.');
-        return false;
       }
     }
-    return true; // iOS handles permission via Info.plist
+    return track[str2.length][str1.length];
   };
 
-  // Handle permission modal response
-  const handlePermissionResponse = async (allow) => {
-    setShowPermissionModal(false);
-    if (allow) {
-      const granted = await requestMicrophonePermission();
-      if (granted) {
-        try {
-          await Voice.start('en-US');
-        } catch (e) {
-          console.error('Speech recognition start error:', e);
-          setIsRecording(false);
-          addAlert('Speech Error', 'Failed to start speech recognition. Please ensure the microphone is working and try again.');
+  const calculateSimilarity = (str1, str2) => {
+    const distance = levenshteinDistance(str1.toLowerCase(), str2.toLowerCase());
+    const maxLength = Math.max(str1.length, str2.length);
+    return 1 - distance / maxLength;
+  };
+
+  const getBestMatch = (query, target) => {
+    const queryWords = query.toLowerCase().split(/\s+/);
+    const targetWords = target.toLowerCase().split(/\s+/);
+    
+    let totalSimilarity = 0;
+    let matchesFound = 0;
+
+    queryWords.forEach(queryWord => {
+      let bestMatchSimilarity = 0;
+      targetWords.forEach(targetWord => {
+        const similarity = calculateSimilarity(queryWord, targetWord);
+        if (similarity > bestMatchSimilarity) {
+          bestMatchSimilarity = similarity;
         }
-      } else {
-        addAlert('Permission Denied', 'Microphone access is required for voice search.');
-        return false;
+      });
+      if (bestMatchSimilarity > 0.3) {
+        totalSimilarity += bestMatchSimilarity;
+        matchesFound++;
       }
+    });
+
+    return matchesFound > 0 ? totalSimilarity / queryWords.length : 0;
+  };
+
+  const fuzzySearch = (products, query) => {
+    if (!query.trim()) return products;
+
+    const searchResults = products.map(product => {
+      const searchableFields = [
+        product.name || '',
+        product.category || '',
+        product.farmer || '',
+        product.description || ''
+      ];
+
+      let bestScore = 0;
+      
+      searchableFields.forEach(field => {
+        const score = getBestMatch(query, field);
+        if (score > bestScore) {
+          bestScore = score;
+        }
+      });
+
+      return { product, score: bestScore };
+    })
+    .filter(item => item.score > 0.4)
+    .sort((a, b) => b.score - a.score)
+    .map(item => item.product);
+
+    return searchResults;
+  };
+
+  // Professional alert system
+  const showAlert = (message, type = 'info', duration = 4000) => {
+    const id = Date.now();
+    const alert = { id, message, type };
+    
+    setAlerts(prev => [...prev, alert]);
+    
+    setTimeout(() => {
+      dismissAlert(id);
+    }, duration);
+  };
+
+  const dismissAlert = (id) => {
+    setAlerts(prev => prev.filter(alert => alert.id !== id));
+  };
+
+  const getAlertConfig = (type) => {
+    switch (type) {
+      case 'success':
+        return {
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          textColor: 'text-green-800',
+          icon: <CheckCircle width={20} height={20} color="#166534" />,
+          iconBg: 'bg-green-100'
+        };
+      case 'error':
+        return {
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          textColor: 'text-red-800',
+          icon: <XCircle width={20} height={20} color="#991b1b" />,
+          iconBg: 'bg-red-100'
+        };
+      case 'warning':
+        return {
+          bgColor: 'bg-amber-50',
+          borderColor: 'border-amber-200',
+          textColor: 'text-amber-800',
+          icon: <AlertCircle width={20} height={20} color="#92400e" />,
+          iconBg: 'bg-amber-100'
+        };
+      default:
+        return {
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          textColor: 'text-blue-800',
+          icon: <Info width={20} height={20} color="#1e40af" />,
+          iconBg: 'bg-blue-100'
+        };
+    }
+  };
+
+  // Check voice availability safely
+  const checkVoiceAvailability = async () => {
+    if (!isVoiceModuleLoaded || !Voice) {
+      console.log('Voice module not loaded');
+      setIsVoiceAvailable(false);
+      return false;
+    }
+
+    try {
+      setIsVoiceAvailable(true);
       return true;
-    } else {
-      addAlert('Permission Denied', 'Microphone access is required for voice search.');
+    } catch (error) {
+      console.warn('Error checking voice availability:', error);
+      setIsVoiceAvailable(false);
       return false;
     }
   };
 
-  // Initialize Voice handlers
-  useEffect(() => {
-    // Check if Voice module is available
-    if (!Voice) {
-      console.error('Voice module is not available');
-      setIsVoiceAvailable(false);
-      addAlert('Voice Module Error', 'Voice recognition is not available on this device.');
-      return;
+  // Request microphone permission
+  const requestMicrophonePermission = async () => {
+    if (!isVoiceModuleLoaded) {
+      return false;
     }
 
-    setIsVoiceAvailable(true);
-
-    Voice.onSpeechStart = () => {
-      setIsRecording(true);
-    };
-    Voice.onSpeechEnd = () => {
-      setIsRecording(false);
-    };
-    Voice.onSpeechResults = (e) => {
-      if (e.value && e.value.length > 0) {
-        setSearchQuery(e.value[0]);
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Microphone Permission',
+            message: 'This app needs access to your microphone for voice search.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Microphone permission error:', err);
+        return false;
       }
-    };
-    Voice.onSpeechError = (e) => {
-      console.error('Speech recognition error:', e);
-      setIsRecording(false);
-      addAlert('Speech Error', 'Could not recognize speech. Please try again.');
-    };
-
-    return () => {
-      if (Voice) {
-        Voice.destroy().then(Voice.removeAllListeners);
-      }
-    };
-  }, []);
-
-  const startSpeechRecognition = async () => {
-    if (!isVoiceAvailable) {
-      addAlert('Voice Module Error', 'Voice recognition is not available on this device.');
-      return;
     }
-
-    setShowPermissionModal(true);
+    return true;
   };
 
-  const stopSpeechRecognition = async () => {
-    if (!isVoiceAvailable) return;
+  // Fetch voice search suggestions from real data - ALL categories
+  const fetchVoiceSearchSuggestions = async (query) => {
+    try {
+      setLoadingVoiceResults(true);
+      
+      // Fetch ALL categories (no limit) and products
+      const [categoriesRes, productsRes] = await Promise.all([
+        categoriesAPI.getCategories(), // Fetch all categories
+        productsAPI.getProducts({ limit: 100 })
+      ]);
+
+      const cats = categoriesRes?.data?.data?.categories || categoriesRes?.data?.data || [];
+      const prods = productsRes?.data?.data?.products || [];
+
+      // If query is provided, filter based on similarity
+      if (query && query.trim()) {
+        // Create suggestions from categories with fuzzy matching
+        const categorySuggestions = cats
+          .filter(cat => cat.name && getBestMatch(query, cat.name) > 0.3)
+          .sort((a, b) => getBestMatch(query, b.name) - getBestMatch(query, a.name))
+          .slice(0, 5)
+          .map(cat => cat.name);
+
+        // Create suggestions from products with fuzzy matching
+        const productSuggestions = prods
+          .filter(prod => prod.name && getBestMatch(query, prod.name) > 0.3)
+          .sort((a, b) => getBestMatch(query, b.name) - getBestMatch(query, a.name))
+          .slice(0, 5)
+          .map(prod => prod.name);
+
+        // Combine and deduplicate suggestions, prioritizing categories
+        const allSuggestions = [...new Set([...categorySuggestions, ...productSuggestions])];
+        
+        // If we have suggestions, return them
+        if (allSuggestions.length > 0) {
+          return allSuggestions.slice(0, 8);
+        }
+
+        // If no matches found, return the original query
+        return [query];
+      } else {
+        // No query provided, return top categories and products
+        const topCategories = cats.slice(0, 5).map(cat => cat.name).filter(Boolean);
+        const topProducts = prods.slice(0, 3).map(prod => prod.name).filter(Boolean);
+        
+        const suggestions = [...topCategories, ...topProducts];
+        return suggestions.length > 0 ? suggestions : ['Search for products'];
+      }
+    } catch (error) {
+      console.error('Failed to fetch voice search suggestions:', error);
+      // Return fallback suggestions
+      return ['Try searching for products'];
+    } finally {
+      setLoadingVoiceResults(false);
+    }
+  };
+
+  // Voice event handlers
+  const onSpeechStart = (e) => {
+    console.log('Speech started');
+    setIsRecording(true);
+    setVoiceResults([]);
+    setRecordingTime(0);
+    
+    const timer = setInterval(() => {
+      setRecordingTime(prev => {
+        if (prev >= 4) {
+          stopVoiceRecognition();
+          return 0;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    
+    setRecordingTimer(timer);
+  };
+
+  const onSpeechEnd = (e) => {
+    console.log('Speech ended');
+    cleanupRecording();
+  };
+
+  const onSpeechResults = async (e) => {
+    console.log('Speech results:', e);
+    if (e.value && e.value.length > 0) {
+      const recognizedText = e.value[0];
+      setSearchQuery(recognizedText);
+      
+      // Fetch real suggestions based on recognized text
+      const suggestions = await fetchVoiceSearchSuggestions(recognizedText);
+      setVoiceResults(suggestions);
+      setShowVoiceResults(true);
+    }
+    cleanupRecording();
+  };
+
+  const onSpeechError = (e) => {
+    console.error('Speech recognition error:', e);
+    cleanupRecording();
+    
+    let errorMessage = 'Could not recognize speech. Please try again.';
+    if (e.error && e.error.message) {
+      errorMessage = e.error.message;
+    }
+    
+    showAlert(errorMessage, 'error');
+  };
+
+  // Cleanup recording state
+  const cleanupRecording = () => {
+    setIsRecording(false);
+    setRecordingTime(0);
+    if (recordingTimer) {
+      clearInterval(recordingTimer);
+      setRecordingTimer(null);
+    }
+  };
+
+  // Initialize Voice recognition
+  const initializeVoiceRecognition = async () => {
+    if (!isVoiceModuleLoaded || !Voice) {
+      console.log('Voice module not available for initialization');
+      setVoiceInitialized(false);
+      return;
+    }
+
+    try {
+      Voice.removeAllListeners();
+
+      Voice.onSpeechStart = onSpeechStart;
+      Voice.onSpeechEnd = onSpeechEnd;
+      Voice.onSpeechResults = onSpeechResults;
+      Voice.onSpeechError = onSpeechError;
+
+      setVoiceInitialized(true);
+      console.log('Voice recognition initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize voice recognition:', error);
+      setVoiceInitialized(false);
+    }
+  };
+
+  // Start voice recognition
+  const startVoiceRecognition = async () => {
+    if (!isVoiceModuleLoaded || !Voice || !voiceInitialized) {
+      showAlert('Voice recognition is not available on this device', 'warning');
+      return false;
+    }
 
     try {
       await Voice.stop();
-    } catch (e) {
-      console.error('Speech recognition stop error:', e);
-      addAlert('Speech Error', 'Failed to stop speech recognition.');
+      await Voice.start('en-US');
+      return true;
+    } catch (error) {
+      console.error('Failed to start voice recognition:', error);
+      
+      let errorMessage = 'Failed to start voice recognition';
+      if (error.message?.includes('permission')) {
+        errorMessage = 'Microphone permission is required';
+      }
+      
+      showAlert(errorMessage, 'error');
+      return false;
     }
   };
+
+  // Stop voice recognition
+  const stopVoiceRecognition = async () => {
+    if (!isVoiceModuleLoaded || !Voice) return;
+
+    try {
+      await Voice.stop();
+      cleanupRecording();
+    } catch (error) {
+      console.error('Failed to stop voice recognition:', error);
+      cleanupRecording();
+    }
+  };
+
+  // Enhanced microphone handler
+  const handleMicrophonePress = async () => {
+    if (isRecording) {
+      await stopVoiceRecognition();
+      return;
+    }
+
+    if (!isVoiceModuleLoaded) {
+      await simulateVoiceSearch();
+      return;
+    }
+
+    if (!voiceInitialized) {
+      await initializeVoiceRecognition();
+    }
+
+    const available = await checkVoiceAvailability();
+    if (!available) {
+      showAlert('Voice recognition is not available on this device', 'warning');
+      await simulateVoiceSearch();
+      return;
+    }
+
+    const hasPermission = await requestMicrophonePermission();
+    if (hasPermission) {
+      const started = await startVoiceRecognition();
+      if (!started) {
+        await simulateVoiceSearch();
+      }
+    } else {
+      showAlert('Microphone permission is required for voice search', 'warning');
+    }
+  };
+
+  // Fallback voice search simulation with ALL real categories
+  const simulateVoiceSearch = async () => {
+    console.log('Using simulated voice search with all categories');
+    setIsRecording(true);
+    setVoiceResults([]);
+    setRecordingTime(0);
+    setLoadingVoiceResults(true);
+
+    const timer = setInterval(async () => {
+      setRecordingTime(prev => {
+        if (prev >= 4) {
+          clearInterval(timer);
+          setIsRecording(false);
+          return 0;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+    
+    setRecordingTimer(timer);
+
+    // Fetch ALL categories and products for suggestions
+    setTimeout(async () => {
+      try {
+        const [categoriesRes, productsRes] = await Promise.all([
+          categoriesAPI.getCategories(), // Fetch all categories
+          productsAPI.getProducts({ limit: 50 })
+        ]);
+
+        const cats = categoriesRes?.data?.data?.categories || categoriesRes?.data?.data || [];
+        const prods = productsRes?.data?.data?.products || [];
+
+        // Create suggestions from real data - prioritize categories
+        const suggestions = [
+          ...cats.slice(0, 6).map(cat => cat.name),
+          ...prods.slice(0, 2).map(prod => prod.name)
+        ].filter(Boolean).slice(0, 8);
+
+        setVoiceResults(suggestions.length > 0 ? suggestions : ['Try searching for products']);
+        setShowVoiceResults(true);
+      } catch (error) {
+        console.error('Failed to fetch suggestions:', error);
+        setVoiceResults(['Try searching for products']);
+        setShowVoiceResults(true);
+      } finally {
+        setLoadingVoiceResults(false);
+      }
+    }, 5000);
+  };
+
+  const handleVoiceResultSelect = (result) => {
+    setSearchQuery(result);
+    setShowVoiceResults(false);
+    setIsSearchActive(true);
+  };
+
+  // Close voice results when search query changes
+  useEffect(() => {
+    if (searchQuery && showVoiceResults) {
+      setShowVoiceResults(false);
+    }
+  }, [searchQuery]);
+
+  // Initialize voice recognition on component mount
+  useEffect(() => {
+    initializeVoiceRecognition();
+
+    return () => {
+      if (isVoiceModuleLoaded && Voice) {
+        try {
+          Voice.destroy().then(() => {
+            Voice.removeAllListeners();
+          });
+        } catch (error) {
+          console.warn('Error cleaning up voice recognition:', error);
+        }
+      }
+      if (recordingTimer) {
+        clearInterval(recordingTimer);
+      }
+    };
+  }, []);
 
   // Fetch products
   useEffect(() => {
@@ -213,7 +598,7 @@ const HomeScreen = ({ navigation }) => {
     })();
   }, []);
 
-  // Fetch all products from the system (simpler approach)
+  // Fetch all products from the system
   const fetchAllProducts = async () => {
     try {
       setLoadingSearch(true);
@@ -244,7 +629,7 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  // Handle search functionality with comprehensive product search
+  // Handle search functionality with fuzzy search
   useEffect(() => {
     const performSearch = async () => {
       if (searchQuery.trim() === '') {
@@ -259,15 +644,7 @@ const HomeScreen = ({ navigation }) => {
           allProducts = await fetchAllProducts();
         }
         
-        const searchResults = allProducts.filter(product => {
-          const query = searchQuery.toLowerCase();
-          return (
-            (product.name && product.name.toLowerCase().includes(query)) ||
-            (product.category && product.category.toLowerCase().includes(query)) ||
-            (product.farmer && product.farmer.toLowerCase().includes(query)) ||
-            (product.description && product.description.toLowerCase().includes(query))
-          );
-        });
+        const searchResults = fuzzySearch(allProducts, searchQuery);
         
         setFilteredProducts(searchResults);
         setLoadingSearch(false);
@@ -313,7 +690,7 @@ const HomeScreen = ({ navigation }) => {
       icon: <Percent width={24} height={24} color="#fff" />,
       tag: 'Limited Time',
       gradient: 'bg-gradient-to-r from-green-500 to-emerald-700',
-      image: 'https://encrypted-tbn0.gstatic.com/images?q=tbnh=8N0V0qX0oXvo9LcdoOtIf2eedVwHvi2i01qVBIMrjQ&s',
+      image: 'https://media.istockphoto.com/id/1280856062/photo/variety-of-fresh-organic-vegetables-and-fruits-in-the-garden.jpg?s=612x612&w=0&k=20&c=KoF5Ue-g3wO3vXPgLw9e2Qzf498Yow7WGXMSCNz7O60=',
     },
     {
       id: 2,
@@ -383,7 +760,7 @@ const HomeScreen = ({ navigation }) => {
       <Animated.View
         entering={SlideInRight.duration(500)}
         exiting={SlideOutLeft.duration(500)}
-        className="flex-1 mx-2 rounded-2xl overflow-hidden shadow-xl border-2"
+        className="flex-1 mx-2 rounded-2xl overflow-hidden border-2"
         style={{
           backgroundColor: item.bgColor,
           borderColor: item.borderColor
@@ -420,7 +797,7 @@ const HomeScreen = ({ navigation }) => {
               </View>
             </View>
             <View
-              className="w-12 h-12 rounded-full justify-center items-center shadow-md"
+              className="w-12 h-12 rounded-full justify-center items-center"
               style={{ backgroundColor: item.iconBg }}
             >
               {item.icon}
@@ -555,7 +932,7 @@ const HomeScreen = ({ navigation }) => {
           activeOpacity={0.9}
           onPress={() => navigation.navigate('Subcategories', { category: item })}
         >
-          <View className={`bg-white rounded-2xl p-2 mb-2 shadow-sm border border-gray-100`}>
+          <View className={`bg-white rounded-2xl p-2 mb-2 border border-gray-100`}>
             <View className="w-full aspect-square rounded-xl overflow-hidden">
               <Image
                 source={
@@ -583,7 +960,7 @@ const HomeScreen = ({ navigation }) => {
     const farmerImageSize = responsiveValue(16, 18, 20);
 
     return (
-      <View className={`bg-white rounded-3xl p-4 items-center shadow-md border border-gray-100 mr-4`}
+      <View className={`bg-white rounded-3xl p-4 items-center border border-gray-100 mr-4`}
         style={{ width: farmerItemWidth }}>
         <View className="relative mb-3">
           <Image
@@ -630,7 +1007,7 @@ const HomeScreen = ({ navigation }) => {
         className={`mb-2 mx-1 ${isLargeScreen ? 'w-[48%]' : 'w-[47%]'}`}
         disabled={isOutOfStock}
       >
-        <View className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+        <View className="bg-white rounded-2xl overflow-hidden border border-gray-100">
           <View className="relative">
             <Image
               source={{ uri: item.image }}
@@ -657,7 +1034,7 @@ const HomeScreen = ({ navigation }) => {
               </View>
             )}
             <TouchableOpacity
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 justify-center items-center shadow-sm"
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 justify-center items-center"
               onPress={(e) => {
                 e.stopPropagation();
                 toggleWishlist(item);
@@ -689,11 +1066,6 @@ const HomeScreen = ({ navigation }) => {
             <TouchableOpacity
               className="overflow-hidden rounded-lg mt-2"
               style={{
-                shadowColor: "#059669",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 1.15,
-                shadowRadius: 4,
-                elevation: 2,
                 opacity: isOutOfStock ? 0.6 : 1,
               }}
               onPress={(e) => {
@@ -768,12 +1140,45 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View className="flex-1 bg-gray-50">
+      {/* Professional Alert System */}
+      <View className="absolute top-20 left-4 right-4 z-50">
+        {alerts.map((alert, index) => {
+          const config = getAlertConfig(alert.type);
+          return (
+            <Animated.View
+              key={alert.id}
+              entering={SlideInDown.duration(300).delay(index * 100)}
+              exiting={FadeOut.duration(200)}
+              className={`${config.bgColor} ${config.borderColor} border-2 rounded-xl mb-2 overflow-hidden`}
+              style={{ marginTop: index * 8 }}
+            >
+              <View className="p-4 flex-row items-start">
+                <View className={`${config.iconBg} w-10 h-10 rounded-full justify-center items-center mr-3`}>
+                  {config.icon}
+                </View>
+                <View className="flex-1">
+                  <Text className={`${config.textColor} font-semibold text-sm`}>
+                    {alert.message}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => dismissAlert(alert.id)}
+                  className="ml-2 w-8 h-8 rounded-full bg-black/5 justify-center items-center"
+                >
+                  <X width={16} height={16} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          );
+        })}
+      </View>
+
       {/* Cart Notification */}
       {showCartNotification && (
         <Animated.View 
           entering={SlideInDown.duration(300)}
           exiting={SlideOutUp.duration(300)}
-          className="absolute top-16 left-4 right-4 z-50 rounded-xl overflow-hidden shadow-xl"
+          className="absolute top-16 left-4 right-4 z-50 rounded-xl overflow-hidden"
         >
           <LinearGradient
             colors={cartNotificationProduct?.error ? ['#ef4444', '#dc2626'] : ['#10b981', '#059669']}
@@ -813,76 +1218,144 @@ const HomeScreen = ({ navigation }) => {
         </Animated.View>
       )}
 
-      {/* Alert Modal */}
+      {/* Voice Recording Modal - Professional & Simple Design */}
       <Modal
-        visible={showAlertModal}
+        visible={isRecording}
         transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowAlertModal(false)}
+        animationType="fade"
+        onRequestClose={stopVoiceRecognition}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-2xl p-4 max-h-[80%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-gray-800">Alerts</Text>
-              <TouchableOpacity onPress={() => setShowAlertModal(false)}>
-                <X width={24} height={24} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
-            {alertQueue.length === 0 ? (
-              <Text className="text-gray-500 text-center">No alerts to display</Text>
-            ) : (
-              <ScrollView>
-                {alertQueue.map((alert) => (
-                  <View key={alert.id} className="mb-4 p-3 bg-gray-100 rounded-lg">
-                    <Text className="text-sm font-semibold text-gray-800">{alert.title}</Text>
-                    <Text className="text-xs text-gray-600 mt-1">{alert.message}</Text>
-                    <TouchableOpacity
-                      className="mt-2 bg-red-500 rounded-lg px-3 py-1 self-start"
-                      onPress={() => removeAlert(alert.id)}
-                    >
-                      <Text className="text-white text-xs font-semibold">Dismiss</Text>
-                    </TouchableOpacity>
+        <View className="flex-1 bg-black/50 justify-center items-center px-6">
+          <Animated.View 
+            entering={FadeIn.duration(200)}
+            className="bg-white rounded-3xl p-8 w-full max-w-sm items-center shadow-xl"
+          >
+            {/* Animated Microphone Icon */}
+            <View className="relative mb-6">
+              <View className="w-24 h-24 rounded-full bg-blue-50 justify-center items-center">
+                <View className="w-20 h-20 rounded-full bg-blue-100 justify-center items-center">
+                  <View className="w-16 h-16 rounded-full bg-blue-400 justify-center items-center">
+                    <Mic width={28} height={28} color="#fff" />
                   </View>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+                </View>
+              </View>
+              
+              {/* Recording Indicator */}
+              <View className="absolute -bottom-2 left-0 right-0 flex-row justify-center">
+                <View className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              </View>
+            </View>
+
+            {/* Status Text */}
+            <View className="items-center mb-4">
+              <Text className="text-xl font-semibold text-gray-800 mb-2">
+                Listening...
+              </Text>
+              <Text className="text-sm text-gray-600 text-center">
+                Speak clearly to search
+              </Text>
+            </View>
+
+            {/* Timer Display */}
+            <View className="bg-gray-50 rounded-xl px-6 py-3 mb-6">
+              <Text className="text-2xl font-bold text-gray-700 text-center">
+                {recordingTime}s
+              </Text>
+            </View>
+
+            {/* Stop Button */}
+            <TouchableOpacity
+              className="bg-blue-400 rounded-xl px-8 py-3 w-full"
+              onPress={stopVoiceRecognition}
+              activeOpacity={0.8}
+            >
+              <Text className="text-white font-semibold text-center text-base">
+                Stop
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </Modal>
 
-      {/* Microphone Permission Modal */}
+      {/* Voice Results Modal - Professional & Simple Design */}
       <Modal
-        visible={showPermissionModal}
+        visible={showVoiceResults && voiceResults.length > 0}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => handlePermissionResponse(false)}
+        onRequestClose={() => setShowVoiceResults(false)}
       >
-        <View className="flex-1 bg-black/50 justify-center items-center">
-          <View className="bg-white rounded-2xl p-6 w-[90%] max-w-[400px]">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-gray-800">Microphone Permission</Text>
-              <TouchableOpacity onPress={() => handlePermissionResponse(false)}>
-                <X width={24} height={24} color="#6b7280" />
+        <View className="flex-1 bg-black/40 justify-end">
+          <Animated.View 
+            entering={SlideInDown.duration(300)}
+            className="bg-white rounded-t-3xl max-h-[70%]"
+          >
+            {/* Header */}
+            <View className="px-6 py-4 border-b border-gray-200">
+              <View className="flex-row justify-between items-center">
+                <View>
+                  <Text className="text-lg font-semibold text-gray-800">
+                    Voice Search Results
+                  </Text>
+                  <Text className="text-sm text-gray-500 mt-1">
+                    Tap on a suggestion to search
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => setShowVoiceResults(false)}
+                  className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
+                >
+                  <X width={20} height={20} color="#6b7280" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Results Content */}
+            <ScrollView 
+              className="px-4 py-4"
+              showsVerticalScrollIndicator={false}
+            >
+              {loadingVoiceResults ? (
+                <View className="py-8 items-center">
+                  <Text className="text-gray-500">Loading suggestions...</Text>
+                </View>
+              ) : (
+                <View className="space-y-3">
+                  {voiceResults.map((result, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      className="bg-white rounded-xl p-4 border border-gray-200 active:bg-gray-50"
+                      onPress={() => handleVoiceResultSelect(result)}
+                    >
+                      <View className="flex-row items-center">
+                        <View className="w-8 h-8 rounded-full bg-blue-100 justify-center items-center mr-3">
+                          <SearchIcon width={16} height={16} color="#3b82f6" />
+                        </View>
+                        <Text className="text-gray-800 font-medium flex-1">
+                          {result}
+                        </Text>
+                        <ChevronRight width={16} height={16} color="#9ca3af" />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Footer Actions */}
+            <View className="px-4 py-4 border-t border-gray-200">
+              <TouchableOpacity
+                className="bg-gray-100 rounded-xl py-3"
+                onPress={handleMicrophonePress}
+              >
+                <View className="flex-row items-center justify-center">
+                  <Mic width={18} height={18} color="#6b7280" />
+                  <Text className="text-gray-700 font-medium ml-2">
+                    Try Again
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
-            <Text className="text-sm text-gray-600 mb-6">
-              This app needs access to your microphone for voice search. Would you like to grant permission?
-            </Text>
-            <View className="flex-row justify-end gap-4">
-              <TouchableOpacity
-                className="bg-gray-200 rounded-lg px-4 py-2"
-                onPress={() => handlePermissionResponse(false)}
-              >
-                <Text className="text-gray-800 font-semibold text-sm">Deny</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="bg-green-500 rounded-lg px-4 py-2"
-                onPress={() => handlePermissionResponse(true)}
-              >
-                <Text className="text-white font-semibold text-sm">Allow</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          </Animated.View>
         </View>
       </Modal>
 
@@ -890,7 +1363,7 @@ const HomeScreen = ({ navigation }) => {
 
       <View className={`px-${responsivePadding} pt-2 pb-2`}>
         <View className="flex-row items-center justify-between">
-          <View className={`flex-row items-center bg-white rounded-xl px-${responsivePadding} py-3 shadow-sm border border-gray-200 flex-1`}>
+          <View className={`flex-row items-center bg-white rounded-xl px-${responsivePadding} py-3 border border-gray-200 flex-1`}>
             <SearchIcon width={20} height={20} color="#6b7280" />
             <TextInput
               placeholder="Search fresh produce, grains, organic foods..."
@@ -903,31 +1376,19 @@ const HomeScreen = ({ navigation }) => {
             <View className="w-px h-6 bg-gray-200 mx-3" />
             <TouchableOpacity 
               className="p-1"
-              onPress={isRecording ? stopSpeechRecognition : startSpeechRecognition}
-              disabled={!isVoiceAvailable}
+              onPress={handleMicrophonePress}
             >
               <Mic 
-                width={18} 
-                height={18} 
-                color={isVoiceAvailable ? (isRecording ? "#ef4444" : "#94a3b8") : "#d1d5db"} 
+                width={20} 
+                height={20} 
+                color={isRecording ? "#3b82f6" : (isVoiceModuleLoaded ? "#94a3b8" : "#d1d5db")} 
               />
             </TouchableOpacity>
-            <View className="w-px h-6 bg-gray-200 mx-3" />
+            {/* <View className="w-px h-6 bg-gray-200 mx-3" />
             <TouchableOpacity className="p-1">
-              <Filter width={18} height={18} color="#94a3b8" />
-            </TouchableOpacity>
+              <Filter width={20} height={20} color="#94a3b8" />
+            </TouchableOpacity> */}
           </View>
-          <TouchableOpacity 
-            className="ml-2 p-2 bg-white rounded-xl shadow-sm border border-gray-200"
-            onPress={() => setShowAlertModal(true)}
-          >
-            <Bell width={18} height={18} color={alertQueue.length > 0 ? "#ef4444" : "#94a3b8"} />
-            {alertQueue.length > 0 && (
-              <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 flex items-center justify-center">
-                <Text className="text-white text-xs">{alertQueue.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -958,7 +1419,7 @@ const HomeScreen = ({ navigation }) => {
                   <Animated.View
                     entering={SlideInRight.duration(500)}
                     exiting={SlideOutLeft.duration(500)}
-                    className="flex-1 mx-1 rounded-xl overflow-hidden shadow-sm"
+                    className="flex-1 mx-1 rounded-xl overflow-hidden"
                     style={{ backgroundColor: item.bgColor, borderColor: item.borderColor, borderWidth: 1 }}
                   >
                     <View className="h-full px-4 flex-row items-center justify-between">
@@ -1014,7 +1475,7 @@ const HomeScreen = ({ navigation }) => {
               )}
             </View>
 
-            <View className={`h-64 rounded-2xl overflow-hidden mx-${responsivePadding} mb-6 shadow-md`}>
+            <View className={`h-64 rounded-2xl overflow-hidden mx-${responsivePadding} mb-6`}>
               <Image
                 source={{ uri: banners[currentBanner].image }}
                 className="w-full h-full absolute"
@@ -1075,7 +1536,7 @@ const HomeScreen = ({ navigation }) => {
             </View>
           ) : (
             <View className="flex-row justify-between items-center mb-4">
-              <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800`}>Today’s Smart Saves</Text>
+              <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800`}>Today's Smart Saves</Text>
               <TouchableOpacity className="flex-row items-center">
               </TouchableOpacity>
             </View>

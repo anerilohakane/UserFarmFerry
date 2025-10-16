@@ -19,7 +19,7 @@ import MainTabNavigator from './MainTabNavigator';
 import ProductStackNavigator from './ProductsStackNavigator';
 
 // Extra Feature Screens (Add/Edit/Profile)
-import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import ChangePasswordScreen from '../screens/PrivacyPolicy';
 import DeleteAddressScreen from '../screens/DeleteAddressScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import LogoScreen from '../screens/LogoScreen';
@@ -136,7 +136,7 @@ const AppStack = () => (
     <Stack.Screen
       name="ChangePassword"
       component={ChangePasswordScreen}
-      options={{ headerShown: true, title: 'Change Password' }}
+      options={{ headerShown: false, title: 'Change Password' }}
     />
     <Stack.Screen
       name="PaymentMethods"
@@ -161,7 +161,7 @@ const AppStack = () => (
     <Stack.Screen
       name="Support"
       component={SupportScreen}
-      options={{ headerShown: true, title: 'Help & Support' }}
+      options={{ headerShown: false, title: 'Help & Support' }}
     />
     <Stack.Screen
       name="NotificationsScreen"

@@ -6,7 +6,6 @@ import { FileText, RotateCcw, ShoppingCart, X } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -31,6 +30,52 @@ import { getStatusColor, getStatusText } from '../utils/helpers';
 
 const { width, height } = Dimensions.get('window');
 
+const CustomAlert = ({ visible, title, message, buttons, onClose }) => {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 bg-black/50 justify-center items-center p-5">
+        <View className="bg-white rounded-xl p-6 w-full max-w-sm border border-gray-200">
+          <Text className="text-lg font-bold text-gray-900 mb-2">{title}</Text>
+          <Text className="text-base text-gray-600 mb-4">{message}</Text>
+          <View className="flex-row justify-end">
+            {buttons.map((button, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => {
+                  button.onPress?.();
+                  onClose();
+                }}
+                className={`px-4 py-2 rounded-lg ${
+                  button.style === 'destructive'
+                    ? 'bg-red-500'
+                    : button.style === 'cancel'
+                    ? 'bg-gray-100'
+                    : 'bg-emerald-500'
+                } ${index > 0 ? 'ml-3' : ''}`}
+              >
+                <Text
+                  className={`text-base font-semibold ${
+                    button.style === 'destructive' || button.style === 'default'
+                      ? 'text-white'
+                      : 'text-gray-700'
+                  }`}
+                >
+                  {button.text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 export default function OrdersScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
@@ -49,6 +94,12 @@ export default function OrdersScreen() {
   const [returnError, setReturnError] = useState('');
   const [returnSuccess, setReturnSuccess] = useState(false);
   const [generatingInvoiceId, setGeneratingInvoiceId] = useState(null);
+  const [alert, setAlert] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+  });
 
   // Responsive values
   const isSmallScreen = width < 375;
@@ -62,83 +113,71 @@ export default function OrdersScreen() {
   };
 
   // Price calculation functions from CheckoutScreen for consistency
-  const getSubtotal = (items) => items.reduce((sum, item) => {
-    // Use discounted price if available, otherwise use regular price
-    const price = item.discountedPrice || item.price;
-    return sum + price * item.quantity;
-  }, 0);
-  
-  const getTotalDiscount = (items) => items.reduce((sum, item) => {
-    if (item.originalPrice) {
-      return sum + (item.originalPrice - item.price) * item.quantity;
-    }
-    return sum;
-  }, 0);
-  
+  const getSubtotal = (items) =>
+    items.reduce((sum, item) => {
+      const price = item.discountedPrice || item.price;
+      return sum + price * item.quantity;
+    }, 0);
+
+  const getTotalDiscount = (items) =>
+    items.reduce((sum, item) => {
+      if (item.originalPrice) {
+        return sum + (item.originalPrice - item.price) * item.quantity;
+      }
+      return sum;
+    }, 0);
+
   const getTotalGST = (items) => {
     return items.reduce((sum, item) => {
-      // Use discounted price for GST calculation if available
       const itemPrice = item.discountedPrice || item.price;
       const itemQuantity = item.quantity || 1;
-
-      // Get GST percentage from product data
       let gstPercent = 0;
 
-      if (item.product && typeof item.product === 'object') {
-        // If product is populated object
+      if (item.product && typeof item.productFAC0product === 'object') {
         gstPercent = item.product.gst || 0;
       } else if (item.gst !== undefined) {
-        // If GST is directly on the item
         gstPercent = item.gst;
       }
 
-      // Calculate GST amount on discounted price: (discounted_price * gst_percentage / 100) * quantity
-      const gstAmount = (itemPrice * gstPercent / 100) * itemQuantity;
-
+      const gstAmount = (itemPrice * gstPercent) / 100 * itemQuantity;
       return sum + gstAmount;
     }, 0);
   };
 
   const getShipping = (subtotal = 0) => {
-    // Waive delivery charges for orders above ₹500
     return subtotal >= 500 ? 0 : 20.0;
   };
   const PLATFORM_FEE = 2.0;
 
-     // Helper function to calculate total amount using backend GST
-   const calculateTotalAmount = (order) => {
-     if (!order.items || order.items.length === 0) {
-       return order.totalAmount || 0;
-     }
+  const calculateTotalAmount = (order) => {
+    if (!order.items || order.items.length === 0) {
+      return order.totalAmount || 0;
+    }
 
-     // Calculate subtotal using discounted prices
-     const subtotal = getSubtotal(order.items);
-     
-     // Use GST from backend order data (already calculated and stored)
-     const gst = order.gst || 0;
-     const shipping = getShipping(subtotal);
-     const platformFee = PLATFORM_FEE;
-     
-     // Total calculation: subtotal(discounted) + gst(from backend) + shipping + platformFee
-     const calculatedTotal = subtotal + gst + shipping + platformFee;
-     
-     // Debug log to verify calculation (remove in production)
-     console.log('OrdersScreen Total Calculation (Using Backend GST):', {
-       orderId: order.orderId || order._id,
-       subtotal,
-       gst,
-       shipping,
-       platformFee,
-       calculatedTotal
-     });
-     
-     return calculatedTotal;
-   };
+    const subtotal = getSubtotal(order.items);
+    const gst = order.gst || 0;
+    const shipping = getShipping(subtotal);
+    const platformFee = PLATFORM_FEE;
+
+    const calculatedTotal = subtotal + gst + shipping + platformFee;
+
+    console.log('OrdersScreen Total Calculation (Using Backend GST):', {
+      orderId: order.orderId || order._id,
+      subtotal,
+      gst,
+      shipping,
+      platformFee,
+      calculatedTotal,
+    });
+
+    return calculatedTotal;
+  };
 
   const fetchOrders = async () => {
     setIsLoading(true);
     try {
-      const params = selectedFilter === 'All' ? {} : { status: selectedFilter.toLowerCase() };
+      const params =
+        selectedFilter === 'All' ? {} : { status: selectedFilter.toLowerCase() };
       const response = await ordersAPI.getMyOrders(params);
       let fetchedOrders = [];
       if (response?.data?.data?.orders) {
@@ -147,8 +186,10 @@ export default function OrdersScreen() {
         fetchedOrders = response.data.data;
       }
       setOrders(fetchedOrders);
-      const statuses = Array.from(new Set(fetchedOrders.map(o => getStatusText(o.status))));
-      setFilterOptions(['All', ...statuses.filter(s => s && s !== 'All')]);
+      const statuses = Array.from(
+        new Set(fetchedOrders.map((o) => getStatusText(o.status)))
+      );
+      setFilterOptions(['All', ...statuses.filter((s) => s && s !== 'All')]);
     } catch (error) {
       setOrders([]);
       setFilterOptions(['All']);
@@ -168,21 +209,32 @@ export default function OrdersScreen() {
   };
 
   const handleOrderAgain = async (order) => {
-    if (!order.items || order.items.length === 0 || !order.deliveryAddress || !order.paymentMethod) {
-      Alert.alert('Error', 'Order is missing items, address, or payment method.');
+    if (
+      !order.items ||
+      order.items.length === 0 ||
+      !order.deliveryAddress ||
+      !order.paymentMethod
+    ) {
+      setAlert({
+        visible: true,
+        title: 'Error',
+        message: 'Order is missing items, address, or payment method.',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
       return;
     }
     setOrderAgainLoadingId(order._id);
     try {
       let paymentMethod = order.paymentMethod;
-      if (paymentMethod === 'Cash on Delivery') paymentMethod = 'cash_on_delivery';
+      if (paymentMethod === 'Cash on Delivery')
+        paymentMethod = 'cash_on_delivery';
       else if (paymentMethod === 'Credit Card') paymentMethod = 'credit_card';
       else if (paymentMethod === 'Debit Card') paymentMethod = 'debit_card';
       else if (paymentMethod === 'UPI') paymentMethod = 'upi';
       else if (paymentMethod === 'Bank Transfer') paymentMethod = 'bank_transfer';
 
       const orderData = {
-        items: order.items.map(item => ({
+        items: order.items.map((item) => ({
           product: item.product._id,
           quantity: item.quantity,
           variation: item.variation || undefined,
@@ -192,20 +244,31 @@ export default function OrdersScreen() {
         deliveryAddress: order.deliveryAddress,
       };
       await ordersAPI.createOrder(orderData);
-      Alert.alert('Success', 'Order placed again successfully!');
+      setAlert({
+        visible: true,
+        title: 'Success',
+        message: 'Order placed again successfully!',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
       fetchOrders();
     } catch (error) {
-      Alert.alert('Error', 'Failed to place order again.');
+      setAlert({
+        visible: true,
+        title: 'Error',
+        message: 'Failed to place order again.',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     } finally {
       setOrderAgainLoadingId(null);
     }
   };
 
   const handleCancelOrder = async (order) => {
-    Alert.alert(
-      'Cancel Order',
-      'Are you sure you want to cancel this order?',
-      [
+    setAlert({
+      visible: true,
+      title: 'Cancel Order',
+      message: 'Are you sure you want to cancel this order?',
+      buttons: [
         { text: 'No', style: 'cancel' },
         {
           text: 'Yes',
@@ -214,17 +277,27 @@ export default function OrdersScreen() {
             setCancellingOrderId(order._id);
             try {
               await ordersAPI.updateOrderStatus(order._id, 'cancelled');
-              Alert.alert('Order Cancelled', 'Your order has been cancelled.');
+              setAlert({
+                visible: true,
+                title: 'Order Cancelled',
+                message: 'Your order has been cancelled.',
+                buttons: [{ text: 'OK', style: 'default' }],
+              });
               fetchOrders();
             } catch (error) {
-              Alert.alert('Error', 'Failed to cancel order.');
+              setAlert({
+                visible: true,
+                title: 'Error',
+                message: 'Failed to cancel order.',
+                buttons: [{ text: 'OK', style: 'default' }],
+              });
             } finally {
               setCancellingOrderId(null);
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleOpenReturnModal = (order) => {
@@ -285,14 +358,14 @@ export default function OrdersScreen() {
             firstName: user.firstName || 'Customer',
             lastName: user.lastName || 'Name',
             email: user.email || 'customer@example.com',
-            phone: user.phone || 'N/A'
+            phone: user.phone || 'N/A',
           };
         } else {
           finalCustomerData = {
             firstName: 'Customer',
             lastName: 'Name',
             email: 'customer@example.com',
-            phone: 'N/A'
+            phone: 'N/A',
           };
         }
       }
@@ -303,52 +376,77 @@ export default function OrdersScreen() {
         finalSupplierData
       );
 
-      Alert.alert(
-        'Invoice Generated Successfully! 📄',
-        'Your invoice has been created. What would you like to do with it?',
-        [
+      setAlert({
+        visible: true,
+        title: 'Invoice Generated Successfully! 📄',
+        message: 'Your invoice has been created. What would you like to do with it?',
+        buttons: [
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Share Invoice',
+            style: 'default',
             onPress: async () => {
               try {
-                const shared = await InvoiceService.shareInvoice(pdfUri, order.orderId);
+                const shared = await InvoiceService.shareInvoice(
+                  pdfUri,
+                  order.orderId
+                );
                 if (!shared) {
-                  Alert.alert(
-                    'Sharing Not Available',
-                    'Sharing is not available on this device. The invoice has been generated successfully.'
-                  );
+                  setAlert({
+                    visible: true,
+                    title: 'Sharing Not Available',
+                    message:
+                      'Sharing is not available on this device. The invoice has been generated successfully.',
+                    buttons: [{ text: 'OK', style: 'default' }],
+                  });
                 }
               } catch (error) {
                 console.error('Error sharing invoice:', error);
-                Alert.alert('Error', 'Failed to share invoice. Please try again.');
+                setAlert({
+                  visible: true,
+                  title: 'Error',
+                  message: 'Failed to share invoice. Please try again.',
+                  buttons: [{ text: 'OK', style: 'default' }],
+                });
               }
-            }
+            },
           },
           {
             text: 'Save to Device',
+            style: 'default',
             onPress: async () => {
               try {
-                const savedPath = await InvoiceService.saveInvoiceToDevice(pdfUri, order.orderId);
-                Alert.alert(
-                  'Invoice Saved!',
-                  `Invoice has been saved to your device.\nPath: ${savedPath}`,
-                  [{ text: 'OK', style: 'default' }]
+                const savedPath = await InvoiceService.saveInvoiceToDevice(
+                  pdfUri,
+                  order.orderId
                 );
+                setAlert({
+                  visible: true,
+                  title: 'Invoice Saved!',
+                  message: `Invoice has been saved to your device.\nPath: ${savedPath}`,
+                  buttons: [{ text: 'OK', style: 'default' }],
+                });
               } catch (error) {
                 console.error('Error saving invoice:', error);
-                Alert.alert('Error', 'Failed to save invoice to device. Please try again.');
+                setAlert({
+                  visible: true,
+                  title: 'Error',
+                  message: 'Failed to save invoice to device. Please try again.',
+                  buttons: [{ text: 'OK', style: 'default' }],
+                });
               }
-            }
-          }
-        ]
-      );
+            },
+          },
+        ],
+      });
     } catch (error) {
       console.error('Invoice generation error:', error);
-      Alert.alert(
-        'Invoice Generation Failed',
-        'Unable to generate invoice at this time. Please try again later.'
-      );
+      setAlert({
+        visible: true,
+        title: 'Invoice Generation Failed',
+        message: 'Unable to generate invoice at this time. Please try again later.',
+        buttons: [{ text: 'OK', style: 'default' }],
+      });
     } finally {
       setGeneratingInvoiceId(null);
     }
@@ -356,27 +454,35 @@ export default function OrdersScreen() {
 
   const getStatusColorClass = (status) => {
     const color = getStatusColor(status, 'order');
-    if (color === '#10b981') return 'bg-green-100 text-green-800';
-    if (color === '#ef4444') return 'bg-red-100 text-red-800';
-    if (color === '#3b82f6') return 'bg-blue-100 text-blue-800';
-    if (color === '#8b5cf6') return 'bg-purple-100 text-purple-800';
-    if (color === '#f59e0b') return 'bg-yellow-100 text-yellow-800';
-    if (color === '#6b7280') return 'bg-gray-100 text-gray-800';
-    return 'bg-gray-100 text-gray-800';
+    if (color === '#10b981') return 'bg-green-50 border border-green-200';
+    if (color === '#ef4444') return 'bg-red-50 border border-red-200';
+    if (color === '#3b82f6') return 'bg-blue-50 border border-blue-200';
+    if (color === '#8b5cf6') return 'bg-purple-50 border border-purple-200';
+    if (color === '#f59e0b') return 'bg-amber-50 border border-amber-200';
+    if (color === '#6b7280') return 'bg-gray-50 border border-gray-200';
+    return 'bg-gray-50 border border-gray-200';
   };
 
   const filteredOrders = useMemo(() => {
     if (selectedFilter === 'All') return orders;
-    return orders.filter(order => getStatusText(order.status) === selectedFilter);
+    return orders.filter((order) => getStatusText(order.status) === selectedFilter);
   }, [orders, selectedFilter]);
 
   const renderFilterTab = (filter) => (
     <TouchableOpacity
       key={filter}
       onPress={() => setSelectedFilter(filter)}
-      className={`px-4 py-2 mr-3 rounded-full ${selectedFilter === filter ? 'bg-emerald-500' : 'bg-gray-200'}`}
+      className={`px-4 py-2.5 mr-3 rounded-lg ${
+        selectedFilter === filter
+          ? 'bg-emerald-500'
+          : 'bg-white border border-gray-200'
+      }`}
     >
-      <Text className={`font-medium ${selectedFilter === filter ? 'text-white' : 'text-gray-600'} ${responsiveValue('text-xs', 'text-sm', 'text-sm')}`}>
+      <Text
+        className={`font-medium ${
+          selectedFilter === filter ? 'text-white' : 'text-gray-600'
+        } ${responsiveValue('text-xs', 'text-sm', 'text-sm')}`}
+      >
         {filter}
       </Text>
     </TouchableOpacity>
@@ -385,25 +491,23 @@ export default function OrdersScreen() {
   const renderOrderItem = ({ item }) => {
     let returnAvailable = false;
     let daysLeft = 0;
-    
-    // Only allow returns for delivered orders that are not already returned
+
     if (item.status === 'delivered' && item.status !== 'returned') {
-      // Check if deliveredAt exists, if not use createdAt or current date for testing
       const deliveryDate = item.deliveredAt || item.updatedAt || item.createdAt;
-      
+
       if (deliveryDate) {
-        const daysSinceDelivery = (new Date() - new Date(deliveryDate)) / (1000 * 60 * 60 * 24);
-      daysLeft = Math.max(0, 7 - Math.floor(daysSinceDelivery));
-      returnAvailable = daysSinceDelivery <= 7;
-        
-        // Debug log to check the calculation
+        const daysSinceDelivery =
+          (new Date() - new Date(deliveryDate)) / (1000 * 60 * 60 * 24);
+        daysLeft = Math.max(0, 7 - Math.floor(daysSinceDelivery));
+        returnAvailable = daysSinceDelivery <= 7;
+
         console.log('Return Status Debug:', {
           orderId: item._id,
           status: item.status,
           deliveryDate: deliveryDate,
           daysSinceDelivery: daysSinceDelivery,
           daysLeft: daysLeft,
-          returnAvailable: returnAvailable
+          returnAvailable: returnAvailable,
         });
       }
     }
@@ -411,40 +515,64 @@ export default function OrdersScreen() {
     return (
       <TouchableOpacity
         onPress={() => navigation.navigate('OrderDetails', { orderId: item._id })}
-        className={`bg-white mx-4 mb-4 rounded-2xl shadow-sm border border-gray-100 ${responsiveValue('p-3', 'p-4', 'p-4')}`}
+        className={`bg-white mx-4 mb-4 rounded-xl border border-gray-100 ${responsiveValue(
+          'p-4',
+          'p-5',
+          'p-5'
+        )}`}
         style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 3,
+          backgroundColor: '#ffffff',
+          borderLeftWidth: 4,
+          borderLeftColor: getStatusColor(item.status, 'order'),
         }}
       >
         {/* Header */}
-        <View className="flex-row justify-between items-start mb-3">
+        <View className="flex-row justify-between items-start mb-4">
           <View className="flex-1 flex-row items-center">
-            {item.items && item.items.length > 0 && item.items[0].product?.images && item.items[0].product.images.length > 0 && item.items[0].product.images[0].url ? (
+            {item.items &&
+            item.items.length > 0 &&
+            item.items[0].product?.images &&
+            item.items[0].product.images.length > 0 &&
+            item.items[0].product.images[0].url ? (
               <Image
                 source={{ uri: item.items[0].product.images[0].url }}
-                className={`${responsiveValue('w-8 h-8', 'w-10 h-10', 'w-12 h-12')} rounded-lg mr-3`}
+                className={`${responsiveValue('w-10 h-10', 'w-12 h-12', 'w-14 h-14')} rounded-lg mr-3`}
               />
             ) : (
-              <View className={`${responsiveValue('w-8 h-8', 'w-10 h-10', 'w-12 h-12')} rounded-lg bg-gray-100 items-center justify-center mr-3`}>
-                <ShoppingCart size={responsiveValue(16, 20, 20)} color="#6b7280" />
+              <View
+                className={`${responsiveValue(
+                  'w-10 h-10',
+                  'w-12 h-12',
+                  'w-14 h-14'
+                )} rounded-lg bg-gray-50 items-center justify-center mr-3 border border-gray-100`}
+              >
+                <ShoppingCart
+                  size={responsiveValue(18, 20, 20)}
+                  color="#9ca3af"
+                />
               </View>
             )}
             <View className="flex-1">
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-bold text-gray-800`} numberOfLines={1}>
+              <Text
+                className={`${responsiveValue(
+                  'text-sm',
+                  'text-base',
+                  'text-lg'
+                )} font-semibold text-gray-900`}
+                numberOfLines={1}
+              >
                 {item.items && item.items.length > 0
-                  ? item.items.map(i => i.product?.name || 'Product').join(', ')
+                  ? item.items.map((i) => i.product?.name || 'Product').join(', ')
                   : 'No Products'}
               </Text>
-              <Text className={`${responsiveValue('text-xs', 'text-xs', 'text-sm')} text-gray-500`}>
+              <Text
+                className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-500 mt-1`}
+              >
                 {item.items.length} item{item.items.length > 1 ? 's' : ''}
               </Text>
             </View>
           </View>
-          <View className={`px-2 py-1 rounded-full ${getStatusColorClass(item.status)}`}>
+          <View className={`px-3 py-1.5 rounded-lg ${getStatusColorClass(item.status)}`}>
             <View className="flex-row items-center">
               <Ionicons
                 name="ellipse"
@@ -452,7 +580,7 @@ export default function OrdersScreen() {
                 color={getStatusColor(item.status, 'order')}
               />
               <Text
-                className={`ml-1 ${responsiveValue('text-xs', 'text-xs', 'text-sm')} font-semibold`}
+                className={`ml-1.5 ${responsiveValue('text-xs', 'text-xs', 'text-sm')} font-semibold`}
                 style={{ color: getStatusColor(item.status, 'order') }}
               >
                 {getStatusText(item.status)}
@@ -462,60 +590,98 @@ export default function OrdersScreen() {
         </View>
 
         {/* Status Badges - FIXED LOGIC */}
-          <View className="flex-row flex-wrap gap-2 mb-3">
+        <View className="flex-row flex-wrap gap-2 mb-4">
           {item.status === 'delivered' && item.status !== 'returned' && (
-              <View className={`px-2 py-1 rounded-md ${returnAvailable ? 'bg-green-100' : 'bg-gray-100'}`}>
-                <Text className={`text-xs font-medium ${returnAvailable ? 'text-green-800' : 'text-gray-500'}`}>
-                  {returnAvailable
-                    ? `🔄 Return Available (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)`
+            <View
+              className={`px-3 py-1.5 rounded-lg ${
+                returnAvailable
+                  ? 'bg-green-50 border border-green-200'
+                  : 'bg-gray-50 border border-gray-200'
+              }`}
+            >
+              <Text
+                className={`text-xs font-medium ${
+                  returnAvailable ? 'text-green-700' : 'text-gray-500'
+                }`}
+              >
+                {returnAvailable
+                  ? `🔄 Return Available (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)`
                   : '❌ Return Not Available'}
-                </Text>
-              </View>
-            )}
-            {item.status === 'returned' && (
-              <View className="px-2 py-1 rounded-md bg-red-100">
-                <Text className="text-xs font-medium text-red-800">
-                  Returned{item.returnReason ? `: ${item.returnReason}` : ''}
-                </Text>
-              </View>
-            )}
-            {item.replacementStatus && (
-              <View className="px-2 py-1 rounded-md bg-amber-100">
-                <Text className="text-xs font-medium text-amber-800">
-                  Replacement: {item.replacementStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </Text>
-              </View>
-            )}
-          </View>
+              </Text>
+            </View>
+          )}
+          {item.status === 'returned' && (
+            <View className="px-3 py-1.5 rounded-lg bg-red-50 border border-red-200">
+              <Text className="text-xs font-medium text-red-700">
+                Returned{item.returnReason ? `: ${item.returnReason}` : ''}
+              </Text>
+            </View>
+          )}
+          {item.replacementStatus && (
+            <View className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200">
+              <Text className="text-xs font-medium text-amber-700">
+                Replacement:{' '}
+                {item.replacementStatus.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Order Details */}
-        <View className="bg-gray-50 p-3 rounded-xl mb-3">
-          <View className="flex-row justify-between mb-2">
+        <View className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-100">
+          <View className="flex-row justify-between mb-3">
             <View className="flex-row items-center">
-              <Ionicons name="calendar-outline" size={responsiveValue(12, 14, 14)} color="#6b7280" />
-              <Text className={`${responsiveValue('text-xs', 'text-xs', 'text-sm')} text-gray-600 ml-2`}>
+              <Ionicons
+                name="calendar-outline"
+                size={responsiveValue(14, 16, 16)}
+                color="#6b7280"
+              />
+              <Text
+                className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-700 ml-2 font-medium`}
+              >
                 {item.createdAt ? format(new Date(item.createdAt), 'dd MMM yyyy') : ''}
               </Text>
             </View>
             <View className="flex-row items-center">
-              <Ionicons name="pricetag-outline" size={responsiveValue(12, 14, 14)} color="#6b7280" />
-              <Text className={`${responsiveValue('text-xs', 'text-xs', 'text-sm')} text-gray-600 ml-2`}>
+              <Ionicons
+                name="pricetag-outline"
+                size={responsiveValue(14, 16, 16)}
+                color="#6b7280"
+              />
+              <Text
+                className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-700 ml-2 font-medium`}
+              >
                 ₹{calculateTotalAmount(item).toFixed(2)}
               </Text>
             </View>
           </View>
           {item.address && (
-            <View className="flex-row items-start mt-1">
-              <Ionicons name="location-outline" size={responsiveValue(12, 14, 14)} color="#6b7280" style={{ marginTop: 2 }} />
-              <Text className={`${responsiveValue('text-xs', 'text-xs', 'text-sm')} text-gray-500 ml-2 flex-1`} numberOfLines={2}>
+            <View className="flex-row items-start mt-2">
+              <Ionicons
+                name="location-outline"
+                size={responsiveValue(14, 16, 16)}
+                color="#6b7280"
+                style={{ marginTop: 2 }}
+              />
+              <Text
+                className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-600 ml-2 flex-1`}
+                numberOfLines={2}
+              >
                 {item.address?.addressLine1 || item.address}
               </Text>
             </View>
           )}
           {item.paymentMethod && (
-            <View className="flex-row items-center mt-1">
-              <Ionicons name="card-outline" size={responsiveValue(12, 14, 14)} color="#6b7280" />
-              <Text className={`${responsiveValue('text-xs', 'text-xs', 'text-sm')} text-gray-500 ml-2 flex-1`} numberOfLines={1}>
+            <View className="flex-row items-center mt-2">
+              <Ionicons
+                name="card-outline"
+                size={responsiveValue(14, 16, 16)}
+                color="#6b7280"
+              />
+              <Text
+                className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-600 ml-2 flex-1`}
+                numberOfLines={1}
+              >
                 {item.paymentMethod}
               </Text>
             </View>
@@ -523,26 +689,42 @@ export default function OrdersScreen() {
         </View>
 
         {/* Total Amount - Using backend GST: subtotal(discounted) + gst(from backend) + shipping + platformFee */}
-        <View className="flex-row justify-between items-center mb-3">
-          <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-600`}>Total Amount:</Text>
-          <Text className={`${responsiveValue('text-base', 'text-lg', 'text-lg')} font-bold text-gray-800`}>
+        <View className="flex-row justify-between items-center mb-4 p-3 bg-white rounded-lg border border-gray-100">
+          <Text
+            className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-700 font-semibold`}
+          >
+            Total Amount:
+          </Text>
+          <Text
+            className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-900`}
+          >
             ₹{calculateTotalAmount(item).toFixed(2)}
           </Text>
         </View>
 
         {/* Action Buttons */}
-        <View className="flex-row justify-between items-center mt-3">
+        <View className="flex-row justify-between items-center mt-2">
           {/* View Details Button */}
           <TouchableOpacity
             onPress={() => navigation.navigate('OrderDetails', { orderId: item._id })}
-            className={`${responsiveValue('flex-1', 'flex-1', 'flex-1')} mr-1 rounded-lg overflow-hidden`}
+            className={`${responsiveValue('flex-1', 'flex-1', 'flex-1')} mr-2 rounded-lg overflow-hidden`}
           >
             <LinearGradient
               colors={['#10b981', '#059669']}
-              className={`${responsiveValue('py-1.5', 'py-2', 'py-2')} px-2 items-center justify-center flex-row`}
+              className={`${responsiveValue('py-2.5', 'py-3', 'py-3')} px-3 items-center justify-center flex-row rounded-lg`}
             >
-              <Ionicons name="eye-outline" size={responsiveValue(14, 16, 16)} color="white" />
-              <Text className={`text-white font-medium ${responsiveValue('text-xs', 'text-xs', 'text-sm')} ml-2`}>
+              <Ionicons
+                name="eye-outline"
+                size={responsiveValue(14, 16, 16)}
+                color="white"
+              />
+              <Text
+                className={`text-white font-semibold ${responsiveValue(
+                  'text-xs',
+                  'text-sm',
+                  'text-sm'
+                )} ml-2`}
+              >
                 Details
               </Text>
             </LinearGradient>
@@ -553,18 +735,28 @@ export default function OrdersScreen() {
             <TouchableOpacity
               onPress={() => handleOrderAgain(item)}
               disabled={orderAgainLoadingId === item._id}
-              className={`${responsiveValue('flex-1', 'flex-1', 'flex-1')} mx-1 rounded-lg overflow-hidden`}
+              className={`${responsiveValue('flex-1', 'flex-1', 'flex-1')} mx-2 rounded-lg overflow-hidden`}
             >
               <LinearGradient
                 colors={['#f59e0b', '#d97706']}
-                className={`${responsiveValue('py-1.5', 'py-2', 'py-2')} px-2 items-center justify-center flex-row`}
+                className={`${responsiveValue('py-2.5', 'py-3', 'py-3')} px-3 items-center justify-center flex-row rounded-lg`}
               >
                 {orderAgainLoadingId === item._id ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
                   <>
-                    <Ionicons name="repeat-outline" size={responsiveValue(14, 16, 16)} color="white" />
-                    <Text className={`text-white font-medium ${responsiveValue('text-xs', 'text-xs', 'text-sm')} ml-2`}>
+                    <Ionicons
+                      name="repeat-outline"
+                      size={responsiveValue(14, 16, 16)}
+                      color="white"
+                    />
+                    <Text
+                      className={`text-white font-semibold ${responsiveValue(
+                        'text-xs',
+                        'text-sm',
+                        'text-sm'
+                      )} ml-2`}
+                    >
                       Order Again
                     </Text>
                   </>
@@ -578,12 +770,16 @@ export default function OrdersScreen() {
             <TouchableOpacity
               onPress={() => handleCancelOrder(item)}
               disabled={cancellingOrderId === item._id}
-              className={`${responsiveValue('w-7 h-7', 'w-8 h-8', 'w-8 h-8')} rounded-full bg-red-500 items-center justify-center mx-1`}
+              className={`${responsiveValue(
+                'w-9 h-9',
+                'w-10 h-10',
+                'w-10 h-10'
+              )} rounded-lg bg-red-50 border border-red-200 items-center justify-center mx-1`}
             >
               {cancellingOrderId === item._id ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color="#ef4444" />
               ) : (
-                <X size={responsiveValue(14, 16, 16)} color="#ffffff" />
+                <X size={responsiveValue(16, 18, 18)} color="#ef4444" />
               )}
             </TouchableOpacity>
           )}
@@ -593,12 +789,12 @@ export default function OrdersScreen() {
             <TouchableOpacity
               onPress={() => handleOpenReturnModal(item)}
               disabled={returningOrderId === item._id}
-              className={`w-8 h-8 rounded-full bg-blue-100 items-center justify-center mx-1`}
+              className={`w-10 h-10 rounded-lg bg-blue-50 border border-blue-200 items-center justify-center mx-1`}
             >
               {returningOrderId === item._id ? (
                 <ActivityIndicator size="small" color="#3b82f6" />
               ) : (
-                <RotateCcw size={16} color="#3b82f6" />
+                <RotateCcw size={18} color="#3b82f6" />
               )}
             </TouchableOpacity>
           )}
@@ -608,12 +804,20 @@ export default function OrdersScreen() {
             <TouchableOpacity
               onPress={() => handleGenerateInvoice(item)}
               disabled={generatingInvoiceId === item._id}
-              className={`${responsiveValue('w-7 h-7', 'w-8 h-8', 'w-8 h-8')} rounded-full ${generatingInvoiceId === item._id ? 'bg-gray-100' : 'bg-gray-200'} items-center justify-center ml-1`}
+              className={`${responsiveValue(
+                'w-9 h-9',
+                'w-10 h-10',
+                'w-10 h-10'
+              )} rounded-lg ${
+                generatingInvoiceId === item._id
+                  ? 'bg-gray-100'
+                  : 'bg-gray-50 border border-gray-200'
+              } items-center justify-center ml-1`}
             >
               {generatingInvoiceId === item._id ? (
-                <ActivityIndicator size="small" color="#e5e7eb" />
+                <ActivityIndicator size="small" color="#6b7280" />
               ) : (
-                <FileText size={responsiveValue(14, 16, 16)} color="green" />
+                <FileText size={responsiveValue(16, 18, 18)} color="#10b981" />
               )}
             </TouchableOpacity>
           )}
@@ -624,22 +828,38 @@ export default function OrdersScreen() {
 
   const renderEmptyState = () => (
     <View className="flex-1 justify-center items-center px-8">
-      <View className={`${responsiveValue('w-20 h-20', 'w-24 h-24', 'w-28 h-28')} bg-gray-100 rounded-full items-center justify-center mb-6`}>
-        <ShoppingCart size={responsiveValue(32, 40, 40)} color="#9ca3af" />
+      <View
+        className={`${responsiveValue(
+          'w-24 h-24',
+          'w-28 h-28',
+          'w-32 h-32'
+        )} bg-gray-50 rounded-2xl items-center justify-center mb-6 border border-gray-100`}
+      >
+        <ShoppingCart size={responsiveValue(36, 44, 44)} color="#9ca3af" />
       </View>
-      <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800 mb-2`}>
+      <Text
+        className={`${responsiveValue('text-xl', 'text-2xl', 'text-2xl')} font-bold text-gray-900 mb-3 text-center`}
+      >
         No Orders Yet
       </Text>
-      <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-500 text-center mb-6`}>
+      <Text
+        className={`${responsiveValue('text-base', 'text-lg', 'text-lg')} text-gray-600 text-center mb-8 leading-6`}
+      >
         {selectedFilter === 'All'
           ? 'Start exploring our products and place your first order!'
           : `No ${selectedFilter.toLowerCase()} orders found`}
       </Text>
       <TouchableOpacity
         onPress={() => navigation.navigate(SCREEN_NAMES.HOME)}
-        className={`bg-emerald-500 ${responsiveValue('px-4 py-2', 'px-6 py-3', 'px-6 py-3')} rounded-full`}
+        className={`bg-emerald-500 ${responsiveValue(
+          'px-6 py-3',
+          'px-8 py-4',
+          'px-8 py-4'
+        )} rounded-lg`}
       >
-        <Text className="text-white font-medium">Browse Products</Text>
+        <Text className="text-white font-semibold text-base">
+          Browse Products
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -648,6 +868,9 @@ export default function OrdersScreen() {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50">
         <ActivityIndicator size="large" color="#10B981" />
+        <Text className="text-gray-600 mt-4 font-medium">
+          Loading your orders...
+        </Text>
       </View>
     );
   }
@@ -658,14 +881,14 @@ export default function OrdersScreen() {
         showBack={true}
         title="My Orders"
         children={
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="py-1"
-          contentContainerStyle={{ paddingRight: 16 }}
-        >
-          {filterOptions.map(renderFilterTab)}
-        </ScrollView>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="py-3"
+            contentContainerStyle={{ paddingRight: 16 }}
+          >
+            {filterOptions.map(renderFilterTab)}
+          </ScrollView>
         }
       />
 
@@ -700,46 +923,60 @@ export default function OrdersScreen() {
         onRequestClose={() => setShowReturnModal(false)}
       >
         <View className="flex-1 bg-black/50 justify-center items-center p-5">
-          <View className="bg-white rounded-xl p-6 w-full max-w-md">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold">Return Order</Text>
+          <View className="bg-white rounded-2xl p-6 w-full max-w-md border border-gray-200">
+            <View className="flex-row items-center justify-between mb-5">
+              <Text className="text-xl font-bold text-gray-900">Return Order</Text>
               <TouchableOpacity
                 onPress={() => setShowReturnModal(false)}
-                className="p-1"
+                className="w-8 h-8 rounded-lg bg-gray-50 items-center justify-center"
               >
                 <X size={20} color="#6b7280" />
               </TouchableOpacity>
             </View>
-            
+
             {returningOrder && (
-              <View className="bg-gray-50 p-3 rounded-lg mb-4">
-                <Text className="text-sm font-medium text-gray-800 mb-1">
+              <View className="bg-gray-50 p-4 rounded-lg mb-5 border border-gray-200">
+                <Text className="text-base font-semibold text-gray-900 mb-1">
                   Order #{returningOrder.orderId || returningOrder._id}
                 </Text>
-                                  <Text className="text-xs text-gray-600">
-                    {returningOrder.items?.length || 0} item{(returningOrder.items?.length || 0) > 1 ? 's' : ''} • ₹{calculateTotalAmount(returningOrder).toFixed(2)}
-                  </Text>
+                <Text className="text-sm text-gray-600">
+                  {returningOrder.items?.length || 0} item
+                  {(returningOrder.items?.length || 0) > 1 ? 's' : ''} • ₹
+                  {calculateTotalAmount(returningOrder).toFixed(2)}
+                </Text>
               </View>
             )}
-            
-            <Text className="text-sm font-medium text-gray-700 mb-2">Return Reason *</Text>
+
+            <Text className="text-base font-semibold text-gray-800 mb-3">
+              Return Reason *
+            </Text>
             <TextInput
               value={returnReason}
               onChangeText={setReturnReason}
               placeholder="Please provide a detailed reason for your return request..."
               placeholderTextColor="#9ca3af"
-              className="border border-gray-200 rounded-lg p-3 h-24 text-gray-800"
+              className="border border-gray-300 rounded-xl p-4 h-32 text-gray-800 text-base leading-5"
               multiline
               textAlignVertical="top"
             />
             {returnError && (
-              <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-red-500 mt-2`}>
+              <Text
+                className={`${responsiveValue(
+                  'text-sm',
+                  'text-base',
+                  'text-base'
+                )} text-red-500 mt-3 font-medium`}
+              >
                 {returnError}
               </Text>
             )}
-            <View className="mt-4">
+            <View className="mt-6">
               <Button
-                title={isSubmittingReturn ? 'Submitting Return Request...' : 'Submit Return Request'}
+                title={
+                  isSubmittingReturn
+                    ? 'Submitting Return Request...'
+                    : 'Submit Return Request'
+                }
                 onPress={handleSubmitReturn}
                 loading={isSubmittingReturn}
                 disabled={isSubmittingReturn || !returnReason.trim()}
@@ -749,7 +986,7 @@ export default function OrdersScreen() {
                 title="Cancel"
                 onPress={() => setShowReturnModal(false)}
                 variant="ghost"
-                className="mt-2"
+                className="mt-3"
                 fullWidth
               />
             </View>
@@ -760,18 +997,24 @@ export default function OrdersScreen() {
       {/* Return Success Toast */}
       {returnSuccess && (
         <View className="absolute top-20 left-0 right-0 items-center z-10">
-          <View className="bg-green-100 px-4 py-2 rounded-lg">
-            <Text className="text-green-800 font-medium">Return request submitted successfully!</Text>
+          <View className="bg-green-50 px-6 py-4 rounded-xl border border-green-200">
+            <Text className="text-green-800 font-semibold text-base">
+              Return request submitted successfully!
+            </Text>
           </View>
         </View>
       )}
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={alert.visible}
+        title={alert.title}
+        message={alert.message}
+        buttons={alert.buttons}
+        onClose={() => setAlert({ ...alert, visible: false })}
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  shadow: {
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)',
-    elevation: 3,
-  },
-});
+const styles = StyleSheet.create({});
