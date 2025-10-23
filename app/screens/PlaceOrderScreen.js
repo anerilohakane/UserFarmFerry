@@ -1,17 +1,38 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import React, { useState } from 'react';
-import { Modal, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { ordersAPI } from '../services/api';
 
-export default function PlaceOrderScreen({ navigation }) {
+export default function PlaceOrderScreen({ navigation, route }) {
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isPlacing, setIsPlacing] = useState(false);
+  const orderData = route?.params?.orderData;
 
-  const handlePlaceOrder = () => {
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      navigation.navigate('Orders');
-    }, 2000);
+  const handlePlaceOrder = async () => {
+    if (!orderData) {
+      Alert.alert('Error', 'Order data not found');
+      return;
+    }
+    
+    setIsPlacing(true);
+    try {
+      const response = await ordersAPI.createOrder(orderData);
+      if (response && (response.data || response.status === 201)) {
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          navigation.navigate('Orders');
+        }, 2000);
+      } else {
+        throw new Error('Order creation failed');
+      }
+    } catch (error) {
+      console.error('Order placement error:', error);
+      Alert.alert('Order Failed', error.message || 'Failed to place order');
+    } finally {
+      setIsPlacing(false);
+    }
   };
 
   return (
@@ -83,11 +104,14 @@ export default function PlaceOrderScreen({ navigation }) {
       {/* Place Order Button */}
       <TouchableOpacity
         onPress={handlePlaceOrder}
-        className="bg-green-600 py-4 rounded-xl flex-row justify-center items-center shadow-lg shadow-green-400"
+        disabled={isPlacing}
+        className={`py-4 rounded-xl flex-row justify-center items-center shadow-lg ${isPlacing ? 'bg-gray-400' : 'bg-green-600 shadow-green-400'}`}
         activeOpacity={0.9}
       >
-        <Text className="text-white text-lg font-bold mr-2">Place Order</Text>
-        <MaterialIcons name="arrow-forward" size={20} color="white" />
+        <Text className="text-white text-lg font-bold mr-2">
+          {isPlacing ? 'Placing Order...' : 'Place Order'}
+        </Text>
+        {!isPlacing && <MaterialIcons name="arrow-forward" size={20} color="white" />}
       </TouchableOpacity>
     </View>
   );

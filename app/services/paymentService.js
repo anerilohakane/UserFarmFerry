@@ -186,6 +186,13 @@ export class PaymentService {
               console.log('⚙️ Native Razorpay not available, using web version');
               paymentResult = await RazorpayWebService.processPayment(paymentData);
             }
+            
+            // Ensure we have a valid payment result
+            if (paymentResult && paymentResult.success) {
+              console.log('✅ Payment processed successfully:', paymentResult);
+            } else {
+              throw new Error('Payment processing returned invalid result');
+            }
           } catch (error) {
             console.error('❌ Razorpay payment failed with error:', error.message);
             
@@ -274,9 +281,19 @@ export class PaymentService {
           throw new Error(`Unsupported payment method: ${paymentMethod}`);
       }
 
+      // Final validation of payment result
+      if (!paymentResult) {
+        throw new Error('Payment processing failed - no result returned');
+      }
+      
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error || 'Payment was not successful');
+      }
+      
+      console.log('✅ Payment service completed successfully:', paymentResult);
       return paymentResult;
     } catch (error) {
-      console.error('Payment processing error:', error);
+      console.error('❌ Payment processing error:', error);
       throw error;
     }
   }
