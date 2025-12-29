@@ -1,8 +1,13 @@
-import { LinearGradient } from 'expo-linear-gradient';
+import { LinearGradient } from "expo-linear-gradient";
 import {
-  ArrowLeft, Check, Tag, X, AlertCircle, Gift
-} from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+  ArrowLeft,
+  Check,
+  Tag,
+  X,
+  AlertCircle,
+  Gift,
+} from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,21 +18,21 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
-} from 'react-native';
-import { useAppContext } from '../context/AppContext';
-import { couponAPI, cartAPI } from '../services/api';
+  View,
+} from "react-native";
+import { useAppContext } from "../context/AppContext";
+import { couponAPI, cartAPI } from "../services/api";
 
 export default function PromoCodeScreen({ navigation }) {
   const { cartItems, updateCartItems } = useAppContext();
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [loadingCoupons, setLoadingCoupons] = useState(true);
 
   // Get screen dimensions
-  const { width } = Dimensions.get('window');
+  const { width } = Dimensions.get("window");
   const isSmallScreen = width < 375;
   const isMediumScreen = width >= 375 && width < 768;
 
@@ -39,7 +44,8 @@ export default function PromoCodeScreen({ navigation }) {
   };
 
   // Responsive spacing helper
-  const responsiveSpacing = (small, medium, large) => responsiveValue(small, medium, large);
+  const responsiveSpacing = (small, medium, large) =>
+    responsiveValue(small, medium, large);
 
   // Define responsive spacings
   const screenPadding = responsiveSpacing(12, 16, 20);
@@ -70,7 +76,7 @@ export default function PromoCodeScreen({ navigation }) {
     if (!Array.isArray(cartItems)) return 0;
     return cartItems.reduce((total, item) => {
       const price = item.discountedPrice || item.price;
-      return total + (price * item.quantity);
+      return total + price * item.quantity;
     }, 0);
   };
 
@@ -86,7 +92,7 @@ export default function PromoCodeScreen({ navigation }) {
       const response = await couponAPI.getActiveCoupons({ limit: 5 });
       setAvailableCoupons(response.data.data.coupons || []);
     } catch (error) {
-      console.error('Failed to fetch coupons:', error);
+      console.error("Failed to fetch coupons:", error);
     } finally {
       setLoadingCoupons(false);
     }
@@ -101,18 +107,21 @@ export default function PromoCodeScreen({ navigation }) {
         setCouponCode(cart.coupon.code);
       }
     } catch (error) {
-      console.error('Failed to check applied coupon:', error);
+      console.error("Failed to check applied coupon:", error);
     }
   };
 
   const validateAndApplyCoupon = async (code) => {
     if (!code.trim()) {
-      Alert.alert('Error', 'Please enter a coupon code');
+      Alert.alert("Error", "Please enter a coupon code");
       return;
     }
 
     if (cartTotal === 0) {
-      Alert.alert('Error', 'Your cart is empty. Add items before applying a coupon.');
+      Alert.alert(
+        "Error",
+        "Your cart is empty. Add items before applying a coupon."
+      );
       return;
     }
 
@@ -121,24 +130,24 @@ export default function PromoCodeScreen({ navigation }) {
       // First validate the coupon
       const validateResponse = await couponAPI.validateCoupon({
         code: code.trim().toUpperCase(),
-        cartTotal
+        cartTotal,
       });
 
       if (validateResponse.data.success) {
         // Apply the coupon to cart
         const applyResponse = await couponAPI.applyCoupon({
-          code: code.trim().toUpperCase()
+          code: code.trim().toUpperCase(),
         });
 
         if (applyResponse.data.success) {
           const couponData = validateResponse.data.data.coupon;
           const discount = validateResponse.data.data.discount;
-          
+
           setAppliedCoupon({
             code: couponData.code,
             type: couponData.type,
             value: couponData.value,
-            discount
+            discount,
           });
 
           // Update cart items to reflect the coupon application
@@ -146,15 +155,16 @@ export default function PromoCodeScreen({ navigation }) {
           updateCartItems(updatedCart.items);
 
           Alert.alert(
-            'Coupon Applied!',
+            "Coupon Applied!",
             `You saved ₹${discount} with coupon ${couponData.code}`,
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
+            [{ text: "OK", onPress: () => navigation.goBack() }]
           );
         }
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Failed to apply coupon';
-      Alert.alert('Error', errorMessage);
+      const errorMessage =
+        error.response?.data?.message || "Failed to apply coupon";
+      Alert.alert("Error", errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -165,15 +175,15 @@ export default function PromoCodeScreen({ navigation }) {
     try {
       await couponAPI.removeCoupon();
       setAppliedCoupon(null);
-      setCouponCode('');
-      
+      setCouponCode("");
+
       // Refresh cart
       const response = await cartAPI.getCart();
       updateCartItems(response.data.data.cart.items);
-      
-      Alert.alert('Coupon Removed', 'Coupon has been removed from your cart');
+
+      Alert.alert("Coupon Removed", "Coupon has been removed from your cart");
     } catch (error) {
-      Alert.alert('Error', 'Failed to remove coupon');
+      Alert.alert("Error", "Failed to remove coupon");
     } finally {
       setIsLoading(false);
     }
@@ -181,81 +191,90 @@ export default function PromoCodeScreen({ navigation }) {
 
   const CouponCard = ({ coupon }) => {
     const canApply = cartTotal >= (coupon.minPurchase || 0);
-    
+
     return (
       <TouchableOpacity
-        onPress={() => canApply ? validateAndApplyCoupon(coupon.code) : null}
+        onPress={() => (canApply ? validateAndApplyCoupon(coupon.code) : null)}
         disabled={!canApply || isLoading}
         style={{
           padding: cardPadding,
           marginBottom: cardMarginBottom,
-          backgroundColor: 'white',
+          backgroundColor: "white",
           borderRadius: 12,
           borderWidth: 1,
-          borderColor: canApply ? '#dcfce7' : '#e5e7eb',
+          borderColor: canApply ? "#dcfce7" : "#e5e7eb",
         }}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-1">
-            <View style={{ marginBottom: mediumMarginBottom }} className="flex-row items-center">
-              <View style={{
-                padding: smallPadding,
-                marginRight: iconMarginRight,
-                borderRadius: 8,
-                backgroundColor: canApply ? '#dcfce7' : '#f3f4f6',
-              }}>
-                <Tag size={responsiveValue(16, 18, 20)} color={canApply ? "#059669" : "#9ca3af"} />
+            <View
+              style={{ marginBottom: mediumMarginBottom }}
+              className="flex-row items-center"
+            >
+              <View
+                style={{
+                  padding: smallPadding,
+                  marginRight: iconMarginRight,
+                  borderRadius: 8,
+                  backgroundColor: canApply ? "#dcfce7" : "#f3f4f6",
+                }}
+              >
+                <Tag
+                  size={responsiveValue(16, 18, 20)}
+                  color={canApply ? "#059669" : "#9ca3af"}
+                />
               </View>
               <View className="flex-1">
-                <Text 
-                  className={`font-bold ${canApply ? 'text-green-600' : 'text-gray-400'}`}
+                <Text
+                  className={`font-bold ${canApply ? "text-green-600" : "text-gray-400"}`}
                   style={{ fontSize: responsiveValue(14, 16, 18) }}
                 >
-                  {coupon.type === 'percentage' 
-                    ? `${coupon.value}% OFF` 
-                    : `₹${coupon.value} OFF`
-                  }
+                  {coupon.type === "percentage"
+                    ? `${coupon.value}% OFF`
+                    : `₹${coupon.value} OFF`}
                 </Text>
-                <Text 
-                  className={`${canApply ? 'text-gray-600' : 'text-gray-400'}`}
+                <Text
+                  className={`${canApply ? "text-gray-600" : "text-gray-400"}`}
                   style={{ fontSize: responsiveValue(11, 12, 13) }}
                 >
                   Code: {coupon.code}
                 </Text>
               </View>
             </View>
-            
-            <Text 
-              className={`${canApply ? 'text-gray-600' : 'text-gray-400'}`}
+
+            <Text
+              className={`${canApply ? "text-gray-600" : "text-gray-400"}`}
               style={{ fontSize: responsiveValue(11, 12, 13) }}
             >
               Min. order: ₹{coupon.minPurchase || 0}
             </Text>
-            
+
             {!canApply && (
-              <Text 
+              <Text
                 className="text-red-500"
-                style={{ 
+                style={{
                   marginTop: smallMargin,
-                  fontSize: responsiveValue(10, 11, 12) 
+                  fontSize: responsiveValue(10, 11, 12),
                 }}
               >
                 Add ₹{(coupon.minPurchase || 0) - cartTotal} more to apply
               </Text>
             )}
           </View>
-          
-          <View style={{
-            paddingHorizontal: tagPaddingHorizontal,
-            paddingVertical: tagPaddingVertical,
-            borderRadius: 9999,
-            backgroundColor: canApply ? '#dcfce7' : '#f3f4f6',
-          }}>
-            <Text 
-              className={`font-medium ${canApply ? 'text-green-600' : 'text-gray-400'}`}
+
+          <View
+            style={{
+              paddingHorizontal: tagPaddingHorizontal,
+              paddingVertical: tagPaddingVertical,
+              borderRadius: 9999,
+              backgroundColor: canApply ? "#dcfce7" : "#f3f4f6",
+            }}
+          >
+            <Text
+              className={`font-medium ${canApply ? "text-green-600" : "text-gray-400"}`}
               style={{ fontSize: responsiveValue(10, 11, 12) }}
             >
-              {canApply ? 'APPLY' : 'N/A'}
+              {canApply ? "APPLY" : "N/A"}
             </Text>
           </View>
         </View>
@@ -266,51 +285,46 @@ export default function PromoCodeScreen({ navigation }) {
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
-      
+
       {/* Header */}
-      <View 
-        className="bg-white flex-row items-center border-b border-gray-100"
-        // style={{
-        //   paddingHorizontal: screenPadding,
-        //   paddingVertical: headerPaddingVertical,
-        // }}
+      <LinearGradient
+        colors={["#FFFFFF", "#F8FAFC"]}
+        className="px-6 py-4 border-b border-gray-100 mt-14"
       >
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          className="p-2 -ml-2"
-          style={{
-            padding: smallPadding,
-            marginLeft: -8,
-            marginRight: headerMarginRight,
-          }}
-        >
-          <ArrowLeft size={responsiveValue(20, 22, 24)} color="#374151" />
-        </TouchableOpacity>
-        <Text 
-          className="text-gray-900 font-semibold flex-1"
-          style={{ fontSize: responsiveValue(16, 18, 20) }}
-        >
-          Apply Coupon
-        </Text>
-      </View>
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              className="p-2 -ml-2 bg-gray-100 rounded-full"
+            >
+              <ArrowLeft size={20} color="#16a34a" />
+            </TouchableOpacity>
+            <View className="ml-3">
+              <Text className="text-xl font-bold text-gray-900">
+                Apply Coupon
+              </Text>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View style={{ padding: screenPadding }}>
           {/* Cart Total Info */}
-          <View 
+          <View
             className="bg-blue-50 border border-blue-200 rounded-xl"
             style={{
               padding: sectionPadding,
               marginBottom: sectionMarginBottom,
             }}
           >
-            <Text 
+            <Text
               className="text-blue-800 font-semibold mb-1"
               style={{ fontSize: responsiveValue(14, 15, 16) }}
             >
               Cart Total: ₹{cartTotal.toFixed(2)}
             </Text>
-            <Text 
+            <Text
               className="text-blue-600"
               style={{ fontSize: responsiveValue(12, 13, 14) }}
             >
@@ -320,7 +334,7 @@ export default function PromoCodeScreen({ navigation }) {
 
           {/* Applied Coupon */}
           {appliedCoupon && (
-            <View 
+            <View
               className="bg-green-50 border border-green-200 rounded-xl"
               style={{
                 padding: sectionPadding,
@@ -329,19 +343,22 @@ export default function PromoCodeScreen({ navigation }) {
             >
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
-                  <View style={{ marginBottom: mediumMarginBottom }} className="flex-row items-center">
+                  <View
+                    style={{ marginBottom: mediumMarginBottom }}
+                    className="flex-row items-center"
+                  >
                     <Check size={responsiveValue(18, 20, 22)} color="#059669" />
-                    <Text 
+                    <Text
                       className="text-green-800 font-semibold ml-2"
-                      style={{ 
+                      style={{
                         marginLeft: smallMargin * 2,
-                        fontSize: responsiveValue(14, 15, 16) 
+                        fontSize: responsiveValue(14, 15, 16),
                       }}
                     >
                       Coupon Applied
                     </Text>
                   </View>
-                  <Text 
+                  <Text
                     className="text-green-700 font-medium"
                     style={{ fontSize: responsiveValue(13, 14, 15) }}
                   >
@@ -361,23 +378,23 @@ export default function PromoCodeScreen({ navigation }) {
 
           {/* Manual Coupon Entry */}
           {!appliedCoupon && (
-            <View 
+            <View
               className="bg-white rounded-xl border border-gray-100"
               style={{
                 padding: sectionPadding,
                 marginBottom: sectionMarginBottom,
               }}
             >
-              <Text 
+              <Text
                 className="text-gray-900 font-semibold"
-                style={{ 
+                style={{
                   marginBottom: textMarginBottom,
-                  fontSize: responsiveValue(14, 15, 16) 
+                  fontSize: responsiveValue(14, 15, 16),
                 }}
               >
                 Enter Coupon Code
               </Text>
-              
+
               <View className="flex-row items-center">
                 <TextInput
                   value={couponCode}
@@ -385,7 +402,7 @@ export default function PromoCodeScreen({ navigation }) {
                   placeholder="Enter coupon code"
                   placeholderTextColor="#9ca3af"
                   className="flex-1 border border-gray-300 rounded-lg"
-                  style={{ 
+                  style={{
                     paddingHorizontal: inputPaddingHorizontal,
                     paddingVertical: inputPaddingVertical,
                     marginRight: iconMarginRight,
@@ -394,14 +411,14 @@ export default function PromoCodeScreen({ navigation }) {
                   autoCapitalize="characters"
                   editable={!isLoading}
                 />
-                
+
                 <TouchableOpacity
                   onPress={() => validateAndApplyCoupon(couponCode)}
                   disabled={isLoading || !couponCode.trim()}
                   className={`rounded-lg ${
-                    isLoading || !couponCode.trim() 
-                      ? 'bg-gray-300' 
-                      : 'bg-green-600'
+                    isLoading || !couponCode.trim()
+                      ? "bg-gray-300"
+                      : "bg-green-600"
                   }`}
                   style={{
                     paddingHorizontal: buttonPaddingHorizontal,
@@ -411,7 +428,7 @@ export default function PromoCodeScreen({ navigation }) {
                   {isLoading ? (
                     <ActivityIndicator size="small" color="white" />
                   ) : (
-                    <Text 
+                    <Text
                       className="text-white font-semibold"
                       style={{ fontSize: responsiveValue(12, 13, 14) }}
                     >
@@ -425,28 +442,34 @@ export default function PromoCodeScreen({ navigation }) {
 
           {/* Available Coupons */}
           <View style={{ marginBottom: sectionMarginBottom }}>
-            <Text 
+            <Text
               className="text-gray-900 font-semibold"
-              style={{ 
+              style={{
                 marginBottom: titleMarginBottom,
-                fontSize: responsiveValue(16, 17, 18) 
+                fontSize: responsiveValue(16, 17, 18),
               }}
             >
               Available Coupons
             </Text>
-            
+
             {loadingCoupons ? (
-              <View className="flex-row justify-center" style={{ paddingVertical: loadingPaddingVertical }}>
+              <View
+                className="flex-row justify-center"
+                style={{ paddingVertical: loadingPaddingVertical }}
+              >
                 <ActivityIndicator size="large" color="#059669" />
               </View>
             ) : availableCoupons.length === 0 ? (
-              <View className="bg-white rounded-xl items-center" style={{ padding: largePadding }}>
+              <View
+                className="bg-white rounded-xl items-center"
+                style={{ padding: largePadding }}
+              >
                 <Gift size={responsiveValue(40, 45, 50)} color="#9ca3af" />
-                <Text 
+                <Text
                   className="text-gray-500 text-center"
-                  style={{ 
+                  style={{
                     marginTop: largeMarginTop,
-                    fontSize: responsiveValue(14, 15, 16) 
+                    fontSize: responsiveValue(14, 15, 16),
                   }}
                 >
                   No coupons available at the moment
@@ -460,30 +483,29 @@ export default function PromoCodeScreen({ navigation }) {
           </View>
 
           {/* Info Section */}
-          <View 
+          <View
             className="bg-yellow-50 border border-yellow-200 rounded-xl"
             style={{ padding: sectionPadding }}
           >
             <View className="flex-row items-start">
               <AlertCircle size={responsiveValue(18, 20, 22)} color="#f59e0b" />
               <View style={{ marginLeft: iconMarginRight }} className="flex-1">
-                <Text 
+                <Text
                   className="text-yellow-800 font-semibold mb-1"
-                  style={{ 
+                  style={{
                     marginBottom: smallMargin,
-                    fontSize: responsiveValue(13, 14, 15) 
+                    fontSize: responsiveValue(13, 14, 15),
                   }}
                 >
                   Coupon Terms
                 </Text>
-                <Text 
+                <Text
                   className="text-yellow-700"
                   style={{ fontSize: responsiveValue(11, 12, 13) }}
                 >
-                  • Only one coupon can be applied per order{'\n'}
-                  • Coupons cannot be combined with other offers{'\n'}
-                  • Check minimum order requirements{'\n'}
-                  • Coupons are valid until expiry date
+                  • Only one coupon can be applied per order{"\n"}• Coupons
+                  cannot be combined with other offers{"\n"}• Check minimum
+                  order requirements{"\n"}• Coupons are valid until expiry date
                 </Text>
               </View>
             </View>
