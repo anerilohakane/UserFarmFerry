@@ -1,6 +1,6 @@
 export const CONFIG = {
-   API_BASE_URL: 'https://farmferry-backend-revised-r4y2.onrender.com/api/v1',
-  //  API_BASE_URL: 'http://192.168.1.6:9000/api/v1', // For web development
+  API_BASE_URL: 'https://farm-ferry-backend-new.vercel.app/api/v1',
+  // API_BASE_URL: 'http://localhost:3001/api/v1', // Local Backend
   // API_BASE_URL: 'https://your-production-api.com/api/v1', // For production
 
   // API Endpoints
@@ -8,19 +8,19 @@ export const CONFIG = {
     AUTH: {
       //LOGIN: '/auth/login/customer',
       //REGISTER: '/auth/register/customer',
-      SEND_OTP: '/auth/send-customer-otp',     // Step 1: send OTP
-      LOGIN_OTP: '/auth/login/customer-otp',
+      SEND_OTP: '/auth/login/send-otp',     // Corrected Path
+      LOGIN_OTP: '/auth/login/verify-otp',  // Corrected Path
       REFRESH_TOKEN: '/auth/refresh-token',
       LOGOUT: '/auth/logout',
       FORGOT_PASSWORD: '/auth/forgot-password',
       RESET_PASSWORD: '/auth/reset-password',
     },
     CUSTOMER: {
-      PROFILE: '/customers/profile',
-      UPDATE_PROFILE: '/customers/profile',
-      ADD_ADDRESS: '/customers/address',
-      UPDATE_ADDRESS: '/customers/address',
-      DELETE_ADDRESS: '/customers/address',
+      PROFILE: '/customer',        // Singular to match Backend route.js
+      UPDATE_PROFILE: '/customer', // Singular
+      ADD_ADDRESS: '/customer/addresses', // Guessing based on folder structure, will need verification
+      UPDATE_ADDRESS: '/customer/addresses',
+      DELETE_ADDRESS: '/customer/addresses',
     },
     PRODUCTS: {
       LIST: '/products',
