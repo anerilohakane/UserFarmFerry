@@ -1,73 +1,83 @@
+/**
+ * Configuration file for the FarmFerry User App
+ * Contains API endpoints, storage keys, and other app-wide constants
+ */
+
 export const CONFIG = {
-  API_BASE_URL: 'https://farm-ferry-backend-new.vercel.app/api/v1',
-  // API_BASE_URL: 'http://localhost:3001/api/v1', // Local Backend
-  // API_BASE_URL: 'https://your-production-api.com/api/v1', // For production
+    // Base API URL
+    API_BASE_URL: 'https://farm-ferry-backend-new.vercel.app/api/v1',
 
-  // API Endpoints
-  ENDPOINTS: {
-    AUTH: {
-      //LOGIN: '/auth/login/customer',
-      //REGISTER: '/auth/register/customer',
-      SEND_OTP: '/auth/login/send-otp',     // Corrected Path
-      LOGIN_OTP: '/auth/login/verify-otp',  // Corrected Path
-      REFRESH_TOKEN: '/auth/refresh-token',
-      LOGOUT: '/auth/logout',
-      FORGOT_PASSWORD: '/auth/forgot-password',
-      RESET_PASSWORD: '/auth/reset-password',
+    // Storage Keys for AsyncStorage
+    STORAGE_KEYS: {
+        ACCESS_TOKEN: 'access_token',
+        REFRESH_TOKEN: 'refresh_token',
+        USER_DATA: 'user_data',
     },
-    CUSTOMER: {
-      PROFILE: '/customer',        // Singular to match Backend route.js
-      UPDATE_PROFILE: '/customer', // Singular
-      ADD_ADDRESS: '/customer/addresses', // Guessing based on folder structure, will need verification
-      UPDATE_ADDRESS: '/customer/addresses',
-      DELETE_ADDRESS: '/customer/addresses',
-    },
-    PRODUCTS: {
-      LIST: '/products',
-      DETAILS: '/products',
-      SEARCH: '/products/search',
-    },
-    ORDERS: {
-      CREATE: '/orders',
-      LIST: '/orders/my-orders',
-      DETAILS: '/orders',
-      UPDATE_STATUS: '/orders', // We'll use `/orders/:id/status` for status updates
-    },
-    CART: {
-      GET: '/cart',
-      ADD: '/cart/items',
-      UPDATE: '/cart/items',
-      REMOVE: '/cart/items',
-    },
-    CATEGORIES: {
-      LIST: '/categories',
-      DETAILS: '/categories',
-    },
-  },
 
-  // App Configuration
-  APP: {
-    NAME: 'FarmFerry',
-    VERSION: '1.0.0',
-  },
+    // API Endpoints
+    ENDPOINTS: {
+        // Authentication endpoints
+        AUTH: {
+            LOGIN: '/auth/login',
+            REGISTER: '/auth/register',
+            LOGOUT: '/auth/logout',
+            REFRESH_TOKEN: '/auth/refresh-token',
+            FORGOT_PASSWORD: '/auth/forgot-password',
+            RESET_PASSWORD: '/auth/reset-password',
+            SEND_OTP: '/auth/login/send-otp',
+            LOGIN_OTP: '/auth/login/verify-otp',
+        },
 
-  // Storage Keys
-  STORAGE_KEYS: {
-    ACCESS_TOKEN: 'access_token',
-    REFRESH_TOKEN: 'refresh_token',
-    USER_DATA: 'user_data',
-    THEME: 'theme',
-  },
+        // Customer endpoints
+        CUSTOMER: {
+            PROFILE: '/customers/profile',
+            UPDATE_PROFILE: '/customers/profile',
+            ADD_ADDRESS: '/customers/addresses',
+            UPDATE_ADDRESS: '/customers/addresses',
+            DELETE_ADDRESS: '/customers/addresses',
+        },
 
-  // Validation Rules
-  VALIDATION: {
-    PASSWORD_MIN_LENGTH: 6,
-    PHONE_REGEX: /^[0-9]{10}$/,
-    EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  },
+        // Products endpoints
+        PRODUCTS: {
+            LIST: '/supplier/products',
+            DETAILS: '/supplier/products',
+            SEARCH: '/supplier/products/search',
+        },
+
+        // Orders endpoints
+        ORDERS: {
+            CREATE: '/orders',
+            LIST: '/orders',
+            DETAILS: '/orders',
+            UPDATE_STATUS: '/orders',
+        },
+
+        // Cart endpoints
+        CART: {
+            GET: '/cart',
+            ADD: '/cart',
+            UPDATE: '/cart',
+            REMOVE: '/cart',
+        },
+
+        // Categories endpoints
+        CATEGORIES: {
+            LIST: '/admin/category',
+        },
+    },
+
+    // App constants
+    APP: {
+        NAME: 'FarmFerry',
+        VERSION: '1.0.0',
+        DEFAULT_TIMEOUT: 30000,
+    },
+
+    // Validation constants
+    VALIDATION: {
+        PASSWORD_MIN_LENGTH: 8,
+        PHONE_REGEX: /^[0-9]{10}$/,
+    },
 };
 
-// Default export to satisfy Expo Router
-export default function ConfigIndex() {
-  return null;
-}
+export default CONFIG;

@@ -86,8 +86,7 @@ const ProductDetailsScreen = ({ route, navigation }) => {
     }
     if (!isInCart) {
       try {
-        const response = await cartAPI.addToCart({ productId: product._id || product.id, quantity: 1 });
-        updateCartItems(response.data.data.cart.items);
+        await cartAPI.addToCart(product._id || product.id, 1);
         Alert.alert('Added to Cart', `${product.name} has been added to your cart`);
       } catch (error) {
         console.error('Failed to add to cart:', error);
@@ -103,13 +102,13 @@ const ProductDetailsScreen = ({ route, navigation }) => {
       Alert.alert('Out of stock', 'This product is currently out of stock.');
       return;
     }
-    
+
     const buyNowItems = isInCart ? cartItems : [...cartItems, { ...product, quantity: 1 }];
-    
+
     if (!isInCart) {
       updateCartItems(buyNowItems);
     }
-    
+
     // Navigate directly to OrderSummary for Buy Now
     navigation.navigate('OrderSummary', {
       items: buyNowItems
@@ -271,9 +270,8 @@ const ProductDetailsScreen = ({ route, navigation }) => {
       {/* Action Buttons */}
       <View className="bg-white border-t border-gray-200 p-4 flex-row">
         <TouchableOpacity
-          className={`flex-1 justify-center items-center rounded-xl ml-0 shadow-sm border-2 ${
-            isInCart ? 'border-gray-300' : ((typeof product.stockQuantity === 'number' ? product.stockQuantity : 0) > 0 || product.inStock) ? 'border-green-600' : 'border-red-500'
-          }`}
+          className={`flex-1 justify-center items-center rounded-xl ml-0 shadow-sm border-2 ${isInCart ? 'border-gray-300' : ((typeof product.stockQuantity === 'number' ? product.stockQuantity : 0) > 0 || product.inStock) ? 'border-green-600' : 'border-red-500'
+            }`}
           onPress={handleAddToCart}
           disabled={isInCart || !((typeof product.stockQuantity === 'number' ? product.stockQuantity : 0) > 0 || product.inStock)}
           style={{ height: 44 }}

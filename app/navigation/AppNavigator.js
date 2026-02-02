@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { SCREEN_NAMES } from '../types';
 
 // Auth Screens
+import GetStartedScreen from '../screens/GetStartedScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
@@ -42,12 +43,17 @@ import PaymentStatusScreen from '../screens/PaymentStatusScreen';
 import ProductDetailsScreen from '../screens/ProductDetailsScreen';
 import RazorpayTestScreen from '../screens/RazorpayTestScreen';
 import OrderSummaryScreen from '../screens/orderSummary';
-
+import CartScreen from '../screens/CartScreen';
 
 const Stack = createStackNavigator();
 
 const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen
+      name={SCREEN_NAMES.GET_STARTED}
+      component={GetStartedScreen}
+      options={{ headerShown: false }}
+    />
     <Stack.Screen
       name={SCREEN_NAMES.LOGIN}
       component={LoginScreen}
@@ -107,6 +113,11 @@ const AppStack = () => (
       name={SCREEN_NAMES.PRODUCT_DETAILS}
       component={ProductDetailsScreen}
       options={{ headerShown: true }}
+    />
+    <Stack.Screen
+      name="Cart"
+      component={CartScreen}
+      options={{ headerShown: false }}
     />
     {/* <Stack.Screen
       name="Checkout"

@@ -1,813 +1,160 @@
-// import { useNavigation } from '@react-navigation/native';
-// import { format } from 'date-fns';
-// import {
-//   Bell, ChevronRight,
-//   Edit3,
-//   Headphones, Lock, LogOut,
-//   Mail,
-//   Phone,
-//   Settings,
-//   Star, User, X
-// } from 'lucide-react-native';
-// import { useEffect, useState } from 'react';
-// import {
-//   Dimensions,
-//   FlatList,
-//   Modal,
-//   RefreshControl,
-//   ScrollView,
-//   Text,
-//   TouchableOpacity,
-//   View
-// } from 'react-native';
-// import Header, { HeaderVariants } from '../components/ui/Header';
-// import { useAuth } from '../context/AuthContext';
-// import { customerAPI, notificationsAPI } from '../services/api';
-
-// const ProfileScreen = () => {
-//   const navigation = useNavigation();
-//   const { user, logout, updateUser } = useAuth();
-//   const profileUser = user && user.customer ? user.customer : user;
-//   const [activeTab, setActiveTab] = useState('profile');
-//   const [showNotifications, setShowNotifications] = useState(false);
-//   const [notifications, setNotifications] = useState([]);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [refreshing, setRefreshing] = useState(false);
-
-//   // Get screen dimensions for responsive design
-//   const { width, height } = Dimensions.get('window');
-//   const isSmallScreen = height < 700;
-
-//   useEffect(() => {
-//     fetchNotifications();
-//   }, []);
-
-//   const fetchNotifications = async () => {
-//     try {
-//       const response = await notificationsAPI.getNotifications();
-//       setNotifications(Array.isArray(response.data.data) ? response.data.data : []);
-//     } catch (error) {
-//       console.error('Failed to fetch notifications:', error);
-//       setNotifications([]);
-//     }
-//   };
-
-//   const handleRefresh = async () => {
-//     setRefreshing(true);
-//     try {
-//       const response = await customerAPI.getProfile();
-//       updateUser(response.data.data);
-//     } catch (e) {
-//       // Optionally show error
-//     }
-//     setRefreshing(false);
-//   };
-
-//   const profileMenu = [
-//     { icon: Lock, label: 'Change Password', desc: 'Update your password', color: 'red', badge: null, onPress: () => navigation.navigate('ChangePassword') },
-//     { icon: Star, label: 'My Reviews', desc: 'View and manage your reviews', color: 'yellow', badge: null, onPress: () => navigation.navigate('MyReviews') },
-//     { icon: Settings, label: 'Settings', desc: 'App preferences', color: 'indigo', badge: null, onPress: () => navigation.navigate('Settings') },
-//     { icon: Headphones, label: 'Help & Support', desc: 'Get assistance', color: 'teal', badge: null, onPress: () => navigation.navigate('Support') },
-//   ];
-
-//   const renderProfileTab = () => (
-//     <View className={`p-4 ${isSmallScreen ? 'space-y-4' : 'space-y-6'}`}>
-//       <View className={`${isSmallScreen ? 'space-y-3' : 'space-y-4'}`}>
-//         {profileMenu.map((item, i) => (
-//           <TouchableOpacity
-//             key={i}
-//             className="w-full bg-white rounded-lg p-4 shadow-sm border border-gray-100"
-//             onPress={item.onPress}
-//           >
-//             <View className="flex-row items-center">
-//               <View className={`${isSmallScreen ? 'w-10 h-10' : 'w-12 h-12'} rounded-lg items-center justify-center mr-3 ${
-//                 item.color === 'red' ? 'bg-red-50' :
-//                 item.color === 'yellow' ? 'bg-yellow-50' :
-//                 item.color === 'indigo' ? 'bg-indigo-50' :
-//                 item.color === 'teal' ? 'bg-teal-50' : 'bg-gray-50'
-//               }`}>
-//                 <item.icon
-//                   size={isSmallScreen ? 18 : 22}
-//                   color={
-//                     item.color === 'red' ? '#ef4444' :
-//                     item.color === 'yellow' ? '#eab308' :
-//                     item.color === 'indigo' ? '#6366f1' :
-//                     item.color === 'teal' ? '#14b8a6' : '#6b7280'
-//                   }
-//                 />
-//               </View>
-//               <View className="flex-1">
-//                 <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-gray-800`}>{item.label}</Text>
-//                 <Text className={`${isSmallScreen ? 'text-xs' : 'text-sm'} text-gray-500 mt-1`}>{item.desc}</Text>
-//               </View>
-//               <ChevronRight size={isSmallScreen ? 16 : 20} color="#9ca3af" />
-//             </View>
-//           </TouchableOpacity>
-//         ))}
-//       </View>
-      
-//       <View className={`${isSmallScreen ? 'pt-1' : 'pt-2'}`}>
-//         <TouchableOpacity 
-//           onPress={logout} 
-//           className="w-full flex-row items-center justify-center bg-red-50 p-4 rounded-lg border border-red-100 gap-3"
-//         >
-//           <LogOut size={isSmallScreen ? 18 : 20} color="#ef4444" />
-//           <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-red-600`}>Logout</Text>
-//         </TouchableOpacity>
-//       </View>
-//     </View>
-//   );
-
-//   return (
-//     <View className="flex-1 bg-gray-50">
-//       <Header
-//         title="Profile"
-//         showNotifications={true}
-//         onNotificationPress={() => setShowNotifications(!showNotifications)}
-//         children={
-//           <View className="flex-row items-center mt-2">
-//             <View className={`${isSmallScreen ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-green-500 items-center justify-center mr-2`}>
-//               <User size={isSmallScreen ? 16 : 18} color="#ffffff" />
-//             </View>
-//             <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500`}>Manage your account</Text>
-//           </View>
-//         }
-//       />
-
-//       {/* Profile Header */}
-//       {profileUser && (
-//         <View className={`p-4 bg-white ${isSmallScreen ? 'py-3' : ''}`}>
-//           <View className="items-center">
-//             <View className="relative mb-3">
-//               <View className={`${isSmallScreen ? 'w-14 h-14' : 'w-16 h-16'} rounded-xl bg-green-500 items-center justify-center`}>
-//                 <User size={isSmallScreen ? 24 : 28} color="#ffffff" />
-//               </View>
-//               <TouchableOpacity 
-//                 className={`absolute -bottom-1 -right-1 ${isSmallScreen ? 'w-5 h-5' : 'w-6 h-6'} rounded-full bg-white items-center justify-center border-2 border-gray-200`}
-//                 onPress={() => navigation.navigate('EditProfile', { user })}
-//               >
-//                 <Edit3 size={isSmallScreen ? 10 : 12} color="#16a34a" />
-//               </TouchableOpacity>
-//             </View>
-//             <View>
-//               <Text className={`${isSmallScreen ? 'text-base' : 'text-lg'} font-semibold text-gray-800 mb-1 text-center`}>
-//                 {profileUser.firstName || profileUser.lastName ? 
-//                   `${profileUser.firstName || ''} ${profileUser.lastName || ''}`.trim() : 
-//                   profileUser.name}
-//               </Text>
-//               <View className="flex-row items-center mb-1 justify-center">
-//                 <Phone size={isSmallScreen ? 10 : 12} color="#4b5563" />
-//                 <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500 ml-1`}>{profileUser.phone}</Text>
-//               </View>
-//               <View className="flex-row items-center justify-center">
-//                 <Mail size={isSmallScreen ? 10 : 12} color="#4b5563" />
-//                 <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500 ml-1`}>{profileUser.email}</Text>
-//               </View>
-//             </View>
-//           </View>
-//         </View>
-//       )}
-
-//       {/* Tab Content */}
-//       <ScrollView
-//         className="flex-1"
-//         contentContainerStyle={{ paddingBottom: isSmallScreen ? 20 : 30 }}
-//         refreshControl={
-//           <RefreshControl 
-//             refreshing={refreshing} 
-//             onRefresh={handleRefresh} 
-//             colors={["#10B981"]}
-//           />
-//         }
-//       >
-//         {renderProfileTab()}
-//       </ScrollView>
-
-//       {/* Notifications Modal */}
-//       <Modal
-//         visible={showNotifications}
-//         animationType="slide"
-//         transparent={false}
-//         onRequestClose={() => setShowNotifications(false)}
-//       >
-//         <View className="flex-1 bg-white">
-//           <View className="p-4 border-b border-gray-200 flex-row justify-between items-center">
-//             <Text className={`${isSmallScreen ? 'text-base' : 'text-lg'} font-semibold text-gray-800`}>Notifications</Text>
-//             <TouchableOpacity
-//               onPress={() => setShowNotifications(false)}
-//               className="p-1.5"
-//             >
-//               <X size={isSmallScreen ? 18 : 20} color="#4b5563" />
-//             </TouchableOpacity>
-//           </View>
-//           <FlatList
-//             data={notifications}
-//             keyExtractor={(item) => item.id || item._id || Math.random().toString()}
-//             renderItem={({ item }) => (
-//               <TouchableOpacity
-//                 className={`p-4 border-b border-gray-100 ${item.unread ? 'bg-blue-50' : ''}`}
-//               >
-//                 <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-gray-800`}>{item.title}</Text>
-//                 <Text className={`${isSmallScreen ? 'text-xs' : 'text-sm'} text-gray-500 mt-1`}>{item.desc || item.message}</Text>
-//                 <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-400 mt-1`}>
-//                   {item.createdAt ? format(new Date(item.createdAt), 'MMM d, h:mm a') : ''}
-//                 </Text>
-//                 {item.unread && (
-//                   <View className="absolute top-4 right-4 w-2 h-2 rounded-full bg-blue-500" />
-//                 )}
-//               </TouchableOpacity>
-//             )}
-//             ListEmptyComponent={
-//               <View className="flex-1 items-center justify-center p-8">
-//                 <Text className="text-gray-500">No notifications</Text>
-//               </View>
-//             }
-//           />
-//         </View>
-//       </Modal>
-//     </View>
-//   );
-// };
-
-// export default ProfileScreen;
-
-
-// import { useNavigation } from '@react-navigation/native';
-// import { format } from 'date-fns';
-// import {
-//   Bell, ChevronRight,
-//   Edit3,
-//   Headphones, Lock, LogOut,
-//   Mail,
-//   Phone,
-//   Settings,
-//   Star, User, X
-// } from 'lucide-react-native';
-// import { useEffect, useState } from 'react';
-// import {
-//   Dimensions,
-//   FlatList,
-//   Modal,
-//   RefreshControl,
-//   ScrollView,
-//   Text,
-//   TouchableOpacity,
-//   View
-// } from 'react-native';
-// import Header, { HeaderVariants } from '../components/ui/Header';
-// import { useAuth } from '../context/AuthContext';
-// import { customerAPI, notificationsAPI } from '../services/api';
-
-// const ProfileScreen = () => {
-//   const navigation = useNavigation();
-//   const { user, logout, updateUser } = useAuth();
-//   const profileUser = user && user.customer ? user.customer : user;
-//   const [activeTab, setActiveTab] = useState('profile');
-//   const [showNotifications, setShowNotifications] = useState(false);
-//   const [notifications, setNotifications] = useState([]);
-//   const [customerData, setCustomerData] = useState(null);
-//   const [isLoading, setIsLoading] = useState(false);
-//   const [refreshing, setRefreshing] = useState(false);
-
-//   // Get screen dimensions for responsive design
-//   const { width, height } = Dimensions.get('window');
-//   const isSmallScreen = height < 700;
-
-//   useEffect(() => {
-//     fetchNotifications();
-//     fetchCustomerProfile();
-//   }, []);
-
-//   const fetchNotifications = async () => {
-//     try {
-//       const response = await notificationsAPI.getNotifications();
-//       setNotifications(Array.isArray(response.data.data) ? response.data.data : []);
-//     } catch (error) {
-//       console.error('Failed to fetch notifications:', error);
-//       setNotifications([]);
-//     }
-//   };
-
-//   const fetchCustomerProfile = async () => {
-//     try {
-//       const response = await customerAPI.getProfile();
-//       setCustomerData(response.data.data);
-//       updateUser(response.data.data);
-//     } catch (error) {
-//       console.error('Failed to fetch customer profile:', error);
-//     }
-//   };
-
-//   const handleRefresh = async () => {
-//     setRefreshing(true);
-//     try {
-//       await fetchCustomerProfile();
-//     } catch (e) {
-//       // Optionally show error
-//     }
-//     setRefreshing(false);
-//   };
-
-//   // Get display name from various sources
-//   const getDisplayName = () => {
-//     // Priority: 1. Profile name, 2. Default address name, 3. Any address name, 4. Fallback
-//     if (profileUser?.firstName || profileUser?.lastName) {
-//       return `${profileUser.firstName || ''} ${profileUser.lastName || ''}`.trim();
-//     }
-    
-//     if (profileUser?.name) {
-//       return profileUser.name;
-//     }
-
-//     // Check for name in addresses
-//     if (customerData?.addresses?.length > 0) {
-//       // First try to get name from default address
-//       const defaultAddress = customerData.addresses.find(addr => addr.isDefault);
-//       if (defaultAddress?.name) {
-//         return defaultAddress.name;
-//       }
-      
-//       // If no default, get name from first address that has a name
-//       const addressWithName = customerData.addresses.find(addr => addr.name);
-//       if (addressWithName?.name) {
-//         return addressWithName.name;
-//       }
-//     }
-
-//     return 'User'; // Fallback
-//   };
-
-//   const profileMenu = [
-//     { icon: Lock, label: 'Change Password', desc: 'Update your password', color: 'red', badge: null, onPress: () => navigation.navigate('ChangePassword') },
-//     { icon: Star, label: 'My Reviews', desc: 'View and manage your reviews', color: 'yellow', badge: null, onPress: () => navigation.navigate('MyReviews') },
-//     { icon: Settings, label: 'Settings', desc: 'App preferences', color: 'indigo', badge: null, onPress: () => navigation.navigate('Settings') },
-//     { icon: Headphones, label: 'Help & Support', desc: 'Get assistance', color: 'teal', badge: null, onPress: () => navigation.navigate('Support') },
-//   ];
-
-//   const renderProfileTab = () => (
-//     <View className={`p-4 ${isSmallScreen ? 'space-y-4' : 'space-y-6'}`}>
-//       <View className={`${isSmallScreen ? 'space-y-3' : 'space-y-4'}`}>
-//         {profileMenu.map((item, i) => (
-//           <TouchableOpacity
-//             key={i}
-//             className="w-full bg-white rounded-lg p-4 shadow-sm border border-gray-100"
-//             onPress={item.onPress}
-//           >
-//             <View className="flex-row items-center">
-//               <View className={`${isSmallScreen ? 'w-10 h-10' : 'w-12 h-12'} rounded-lg items-center justify-center mr-3 ${
-//                 item.color === 'red' ? 'bg-red-50' :
-//                 item.color === 'yellow' ? 'bg-yellow-50' :
-//                 item.color === 'indigo' ? 'bg-indigo-50' :
-//                 item.color === 'teal' ? 'bg-teal-50' : 'bg-gray-50'
-//               }`}>
-//                 <item.icon
-//                   size={isSmallScreen ? 18 : 22}
-//                   color={
-//                     item.color === 'red' ? '#ef4444' :
-//                     item.color === 'yellow' ? '#eab308' :
-//                     item.color === 'indigo' ? '#6366f1' :
-//                     item.color === 'teal' ? '#14b8a6' : '#6b7280'
-//                   }
-//                 />
-//               </View>
-//               <View className="flex-1">
-//                 <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-gray-800`}>{item.label}</Text>
-//                 <Text className={`${isSmallScreen ? 'text-xs' : 'text-sm'} text-gray-500 mt-1`}>{item.desc}</Text>
-//               </View>
-//               <ChevronRight size={isSmallScreen ? 16 : 20} color="#9ca3af" />
-//             </View>
-//           </TouchableOpacity>
-//         ))}
-//       </View>
-      
-//       <View className={`${isSmallScreen ? 'pt-1' : 'pt-2'}`}>
-//         <TouchableOpacity 
-//           onPress={logout} 
-//           className="w-full flex-row items-center justify-center bg-red-50 p-4 rounded-lg border border-red-100 gap-3"
-//         >
-//           <LogOut size={isSmallScreen ? 18 : 20} color="#ef4444" />
-//           <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-red-600`}>Logout</Text>
-//         </TouchableOpacity>
-//       </View>
-//     </View>
-//   );
-
-//   return (
-//     <View className="flex-1 bg-gray-50">
-//       <Header
-//         title="Profile"
-//         showNotifications={true}
-//         onNotificationPress={() => setShowNotifications(!showNotifications)}
-//         children={
-//           <View className="flex-row items-center mt-2">
-//             <View className={`${isSmallScreen ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-green-500 items-center justify-center mr-2`}>
-//               <User size={isSmallScreen ? 16 : 18} color="#ffffff" />
-//             </View>
-//             <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500`}>Manage your account</Text>
-//           </View>
-//         }
-//       />
-
-//       {/* Profile Header */}
-//       {(profileUser || customerData) && (
-//         <View className={`p-4 bg-white ${isSmallScreen ? 'py-3' : ''}`}>
-//           <View className="items-center">
-//             <View className="relative mb-3">
-//               <View className={`${isSmallScreen ? 'w-14 h-14' : 'w-16 h-16'} rounded-xl bg-green-500 items-center justify-center`}>
-//                 <User size={isSmallScreen ? 24 : 28} color="#ffffff" />
-//               </View>
-//               <TouchableOpacity 
-//                 className={`absolute -bottom-1 -right-1 ${isSmallScreen ? 'w-5 h-5' : 'w-6 h-6'} rounded-full bg-white items-center justify-center border-2 border-gray-200`}
-//                 onPress={() => navigation.navigate('EditProfile', { user: customerData || user })}
-//               >
-//                 <Edit3 size={isSmallScreen ? 10 : 12} color="#16a34a" />
-//               </TouchableOpacity>
-//             </View>
-//             <View>
-//               <Text className={`${isSmallScreen ? 'text-base' : 'text-lg'} font-semibold text-gray-800 mb-1 text-center`}>
-//                 {getDisplayName()}
-//               </Text>
-//               <View className="flex-row items-center mb-1 justify-center">
-//                 <Phone size={isSmallScreen ? 10 : 12} color="#4b5563" />
-//                 <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500 ml-1`}>
-//                   {profileUser?.phone || customerData?.phone}
-//                 </Text>
-//               </View>
-//               <View className="flex-row items-center justify-center">
-//                 <Mail size={isSmallScreen ? 10 : 12} color="#4b5563" />
-//                 <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500 ml-1`}>
-//                   {profileUser?.email || customerData?.email}
-//                 </Text>
-//               </View>
-              
-//               {/* Show address info if available */}
-//               {customerData?.addresses?.length > 0 && (
-//                 <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-400 mt-1 text-center`}>
-//                   {customerData.addresses.length} address{customerData.addresses.length > 1 ? 'es' : ''} saved
-//                 </Text>
-//               )}
-//             </View>
-//           </View>
-//         </View>
-//       )}
-
-//       {/* Tab Content */}
-//       <ScrollView
-//         className="flex-1"
-//         contentContainerStyle={{ paddingBottom: isSmallScreen ? 20 : 30 }}
-//         refreshControl={
-//           <RefreshControl 
-//             refreshing={refreshing} 
-//             onRefresh={handleRefresh} 
-//             colors={["#10B981"]}
-//           />
-//         }
-//       >
-//         {renderProfileTab()}
-//       </ScrollView>
-
-//       {/* Notifications Modal */}
-//       <Modal
-//         visible={showNotifications}
-//         animationType="slide"
-//         transparent={false}
-//         onRequestClose={() => setShowNotifications(false)}
-//       >
-//         <View className="flex-1 bg-white">
-//           <View className="p-4 border-b border-gray-200 flex-row justify-between items-center">
-//             <Text className={`${isSmallScreen ? 'text-base' : 'text-lg'} font-semibold text-gray-800`}>Notifications</Text>
-//             <TouchableOpacity
-//               onPress={() => setShowNotifications(false)}
-//               className="p-1.5"
-//             >
-//               <X size={isSmallScreen ? 18 : 20} color="#4b5563" />
-//             </TouchableOpacity>
-//           </View>
-//           <FlatList
-//             data={notifications}
-//             keyExtractor={(item) => item.id || item._id || Math.random().toString()}
-//             renderItem={({ item }) => (
-//               <TouchableOpacity
-//                 className={`p-4 border-b border-gray-100 ${item.unread ? 'bg-blue-50' : ''}`}
-//               >
-//                 <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-gray-800`}>{item.title}</Text>
-//                 <Text className={`${isSmallScreen ? 'text-xs' : 'text-sm'} text-gray-500 mt-1`}>{item.desc || item.message}</Text>
-//                 <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-400 mt-1`}>
-//                   {item.createdAt ? format(new Date(item.createdAt), 'MMM d, h:mm a') : ''}
-//                 </Text>
-//                 {item.unread && (
-//                   <View className="absolute top-4 right-4 w-2 h-2 rounded-full bg-blue-500" />
-//                 )}
-//               </TouchableOpacity>
-//             )}
-//             ListEmptyComponent={
-//               <View className="flex-1 items-center justify-center p-8">
-//                 <Text className="text-gray-500">No notifications</Text>
-//               </View>
-//             }
-//           />
-//         </View>
-//       </Modal>
-//     </View>
-//   );
-// };
-
-// export default ProfileScreen;
-
-
-
-import { useNavigation } from '@react-navigation/native';
-import { format } from 'date-fns';
+import React from 'react';
 import {
-  Bell, ChevronRight,
-  Edit3,
-  Headphones, Lock, LogOut,
-  Mail,
-  Phone,
-  Settings,
-  Star, User, X
-} from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import {
-  Dimensions,
-  FlatList,
-  Modal,
-  RefreshControl,
-  ScrollView,
+  View,
   Text,
   TouchableOpacity,
-  View
+  ScrollView,
+  Image,
+  StatusBar,
+  Linking
 } from 'react-native';
-import Header, { HeaderVariants } from '../components/ui/Header';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { Feather, Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
-import { customerAPI, notificationsAPI } from '../services/api';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
-  const { user, logout, updateUser } = useAuth();
-  const profileUser = user && user.customer ? user.customer : user;
-  const [activeTab, setActiveTab] = useState('profile');
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [customerData, setCustomerData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const { user, logout } = useAuth();
 
-  // Get screen dimensions for responsive design
-  const { width, height } = Dimensions.get('window');
-  const isSmallScreen = height < 700;
+  // Helper to get display name/info safely
+  const profileUser = user?.customer || user || {};
+  const displayName = profileUser.name || (profileUser.firstName ? `${profileUser.firstName} ${profileUser.lastName || ''}` : 'User');
+  const displayEmail = profileUser.email || '';
+  const displayPhone = profileUser.phone || '';
 
-  useEffect(() => {
-    fetchNotifications();
-    fetchCustomerProfile();
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await notificationsAPI.getNotifications();
-      setNotifications(Array.isArray(response.data.data) ? response.data.data : []);
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-      setNotifications([]);
-    }
-  };
-
-  const fetchCustomerProfile = async () => {
-    try {
-      const response = await customerAPI.getProfile();
-      setCustomerData(response.data.data);
-      updateUser(response.data.data);
-    } catch (error) {
-      console.error('Failed to fetch customer profile:', error);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      await fetchCustomerProfile();
-    } catch (e) {
-      // Optionally show error
-    }
-    setRefreshing(false);
-  };
-
-  // Get display name from various sources
-  const getDisplayName = () => {
-    // Priority: 1. Profile name, 2. Default address name, 3. Any address name, 4. Fallback
-    if (profileUser?.firstName || profileUser?.lastName) {
-      return `${profileUser.firstName || ''} ${profileUser.lastName || ''}`.trim();
-    }
-    
-    if (profileUser?.name) {
-      return profileUser.name;
-    }
-
-    // Check for name in addresses from customerData
-    if (customerData?.addresses?.length > 0) {
-      // First try to get name from default address
-      const defaultAddress = customerData.addresses.find(addr => addr.isDefault);
-      if (defaultAddress?.name) {
-        return defaultAddress.name;
-      }
-      
-      // If no default, get name from first address that has a name
-      const addressWithName = customerData.addresses.find(addr => addr.name);
-      if (addressWithName?.name) {
-        return addressWithName.name;
-      }
-    }
-
-    // Check for name in addresses from profileUser (fallback)
-    if (profileUser?.addresses?.length > 0) {
-      // First try to get name from default address
-      const defaultAddress = profileUser.addresses.find(addr => addr.isDefault);
-      if (defaultAddress?.name) {
-        return defaultAddress.name;
-      }
-      
-      // If no default, get name from first address that has a name
-      const addressWithName = profileUser.addresses.find(addr => addr.name);
-      if (addressWithName?.name) {
-        return addressWithName.name;
-      }
-    }
-
-    return 'User'; // Fallback
-  };
-
-  const profileMenu = [
-    // { icon: Lock, label: 'Privacy Policy', desc: 'Update your password', color: 'red', badge: null, onPress: () => navigation.navigate('ChangePassword') },
-    { icon: Star, label: 'My Reviews', desc: 'View and manage your reviews', color: 'yellow', badge: null, onPress: () => navigation.navigate('MyReviews') },
-    { icon: Lock, label: 'Privacy Canter', desc: 'Terms, Policies and Licenses', color: 'red', badge: null, onPress: () => navigation.navigate('ChangePassword') },
-    // { icon: Settings, label: 'Settings', desc: 'App preferences', color: 'indigo', badge: null, onPress: () => navigation.navigate('Settings') },
-    { icon: Headphones, label: 'Browse FAQs', desc: 'Get assistance', color: 'teal', badge: null, onPress: () => navigation.navigate('Support') },
-  ];
-
-  const renderProfileTab = () => (
-    <View className={`p-4 ${isSmallScreen ? 'space-y-4' : 'space-y-6'}`}>
-      <View className={`${isSmallScreen ? 'space-y-3' : 'space-y-4'}`}>
-        {profileMenu.map((item, i) => (
-          <TouchableOpacity
-            key={i}
-            className="w-full bg-white rounded-lg p-4 shadow-sm border border-gray-100"
-            onPress={item.onPress}
-          >
-            <View className="flex-row items-center">
-              <View className={`${isSmallScreen ? 'w-10 h-10' : 'w-12 h-12'} rounded-lg items-center justify-center mr-3 ${
-                item.color === 'red' ? 'bg-red-50' :
-                item.color === 'yellow' ? 'bg-yellow-50' :
-                item.color === 'indigo' ? 'bg-indigo-50' :
-                item.color === 'teal' ? 'bg-teal-50' : 'bg-gray-50'
-              }`}>
-                <item.icon
-                  size={isSmallScreen ? 18 : 22}
-                  color={
-                    item.color === 'red' ? '#ef4444' :
-                    item.color === 'yellow' ? '#eab308' :
-                    item.color === 'indigo' ? '#6366f1' :
-                    item.color === 'teal' ? '#14b8a6' : '#6b7280'
-                  }
-                />
-              </View>
-              <View className="flex-1">
-                <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-gray-800`}>{item.label}</Text>
-                <Text className={`${isSmallScreen ? 'text-xs' : 'text-sm'} text-gray-500 mt-1`}>{item.desc}</Text>
-              </View>
-              <ChevronRight size={isSmallScreen ? 16 : 20} color="#9ca3af" />
-            </View>
-          </TouchableOpacity>
-        ))}
+  const MenuItem = ({ icon, title, subtitle, onPress, iconColor = "#333", iconBg = "transparent" }) => (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f3f4f6'
+      }}
+    >
+      <View style={{ width: 40, alignItems: 'center' }}>
+        {icon}
       </View>
-      
-      <View className={`${isSmallScreen ? 'pt-1' : 'pt-2'}`}>
-        <TouchableOpacity 
-          onPress={logout} 
-          className="w-full flex-row items-center justify-center bg-red-50 p-4 rounded-lg border border-red-100 gap-3"
-        >
-          <LogOut size={isSmallScreen ? 18 : 20} color="#ef4444" />
-          <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-red-600`}>Logout</Text>
-        </TouchableOpacity>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: '#1f2937' }}>{title}</Text>
+        <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>{subtitle}</Text>
       </View>
-    </View>
+      <Feather name="chevron-right" size={20} color="#9ca3af" />
+    </TouchableOpacity>
+  );
+
+  const FooterLink = ({ title, onPress }) => (
+    <TouchableOpacity onPress={onPress} style={{ paddingVertical: 12 }}>
+      <Text style={{ fontSize: 14, color: '#4b5563', fontWeight: '500' }}>{title}</Text>
+    </TouchableOpacity>
   );
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <Header
-        title="Profile"
-        showNotifications={true}
-        onNotificationPress={() => setShowNotifications(!showNotifications)}
-        children={
-          <View className="flex-row items-center mt-2">
-            <View className={`${isSmallScreen ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-green-500 items-center justify-center mr-2`}>
-              <User size={isSmallScreen ? 16 : 18} color="#ffffff" />
-            </View>
-            <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500`}>Manage your account</Text>
-          </View>
-        }
-      />
+    <View style={{ flex: 1, backgroundColor: 'white' }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f0fdf4" />
 
-      {/* Profile Header */}
-      {(profileUser || customerData) && (
-        <View className={`p-4 bg-white ${isSmallScreen ? 'py-3' : ''}`}>
-          <View className="items-center">
-            <View className="relative mb-3">
-              <View className={`${isSmallScreen ? 'w-14 h-14' : 'w-16 h-16'} rounded-xl bg-green-500 items-center justify-center`}>
-                <User size={isSmallScreen ? 24 : 28} color="#ffffff" />
-              </View>
-              <TouchableOpacity 
-                className={`absolute -bottom-1 -right-1 ${isSmallScreen ? 'w-5 h-5' : 'w-6 h-6'} rounded-full bg-white items-center justify-center border-2 border-gray-200`}
-                onPress={() => navigation.navigate('EditProfile', { user: customerData || user })}
-              >
-                <Edit3 size={isSmallScreen ? 10 : 12} color="#16a34a" />
-              </TouchableOpacity>
-            </View>
-            <View>
-              <Text className={`${isSmallScreen ? 'text-base' : 'text-lg'} font-semibold text-gray-800 mb-1 text-center`}>
-                {getDisplayName()}
-              </Text>
-              <View className="flex-row items-center mb-1 justify-center">
-                <Phone size={isSmallScreen ? 10 : 12} color="#4b5563" />
-                <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500 ml-1`}>
-                  {profileUser?.phone || customerData?.phone}
-                </Text>
-              </View>
-              {/* <View className="flex-row items-center justify-center">
-                <Mail size={isSmallScreen ? 10 : 12} color="#4b5563" />
-                <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-500 ml-1`}>
-                  {profileUser?.email || customerData?.email}
-                </Text>
-              </View> */}
-              
-              {/* Show address info if available */}
-              {customerData?.addresses?.length > 0 && (
-                <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-400 mt-1 text-center`}>
-                  {customerData.addresses.length} address{customerData.addresses.length > 1 ? 'es' : ''} saved
-                </Text>
-              )}
-            </View>
+      {/* 1. Gradient Header with User Info */}
+      <LinearGradient
+        colors={['#dcfce7', '#f0fdf4', 'white']} // Green gradient fading to white
+        start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+        style={{ paddingBottom: 20, paddingTop: 60, paddingHorizontal: 20 }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {/* Profile Pic Placeholder */}
+          <View style={{
+            width: 64, height: 64,
+            borderRadius: 32,
+            backgroundColor: 'white',
+            justifyContent: 'center', alignItems: 'center',
+            borderWidth: 2, borderColor: '#dcfce7'
+          }}>
+            <Feather name="user" size={32} color="#16a34a" />
+          </View>
+
+          {/* User Details */}
+          <View style={{ marginLeft: 16 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>
+              {displayEmail || 'user@farmferry.com'}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#4b5563', marginTop: 2 }}>
+              {displayPhone || '+91 00000 00000'}
+            </Text>
           </View>
         </View>
-      )}
+      </LinearGradient>
 
-      {/* Tab Content */}
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: isSmallScreen ? 20 : 30 }}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={handleRefresh} 
-            colors={["#10B981"]}
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+
+        {/* 2. Menu Items */}
+        <View style={{ marginTop: 10 }}>
+          <MenuItem
+            icon={<Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3500/3500833.png' }} style={{ width: 28, height: 28 }} ResizeMode="contain" />}
+            title="My Orders"
+            subtitle="Track Orders, Orders History"
+            onPress={() => navigation.navigate('Orders')}
           />
-        }
-      >
-        {renderProfileTab()}
+          <MenuItem
+            icon={<Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1077/1077035.png' }} style={{ width: 24, height: 24 }} ResizeMode="contain" />}
+            title="Wishlist"
+            subtitle="Your Wishlist"
+            onPress={() => navigation.navigate('Wishlist')}
+          />
+          <MenuItem
+            icon={<Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/535/535239.png' }} style={{ width: 24, height: 24 }} ResizeMode="contain" />}
+            title="Manage Address"
+            subtitle="Manage Delivery, Billing Address Here"
+            onPress={() => navigation.navigate('AddAddress')} // Or ManageAddress screen
+          />
+          <MenuItem
+            icon={<Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/747/747376.png' }} style={{ width: 24, height: 24 }} ResizeMode="contain" />}
+            title="Create Custom Profile"
+            subtitle="See Products Best Suited For Your Needs"
+            onPress={() => { }} // Placeholder
+          />
+          <MenuItem
+            icon={<Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/471/471662.png' }} style={{ width: 24, height: 24 }} ResizeMode="contain" />}
+            title="About Us"
+            subtitle="Know More About FarmFerry"
+            onPress={() => { }} // Placeholder
+          />
+        </View>
+
+        {/* 3. Footer Links */}
+        <View style={{ backgroundColor: '#f9fafb', borderRadius: 16, padding: 20, marginTop: 30 }}>
+          <FooterLink title="Contact Us" onPress={() => navigation.navigate('Support')} />
+          <FooterLink title="Our Policies" onPress={() => { }} />
+          <FooterLink title="Blogs" onPress={() => { }} />
+          <FooterLink title="FAQ" onPress={() => navigation.navigate('Support')} />
+          <FooterLink title="Terms & Conditions" onPress={() => { }} />
+          <FooterLink title="Terms Of Service" onPress={() => { }} />
+          <FooterLink title="Grievance Officer" onPress={() => { }} />
+          <FooterLink title="Delete Account" onPress={() => navigation.navigate('Settings')} />
+        </View>
+
+        {/* 4. Sign Out Button */}
+        <TouchableOpacity
+          onPress={logout}
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: 30,
+            marginBottom: 20,
+            paddingVertical: 12,
+            borderRadius: 30,
+            borderWidth: 1,
+            borderColor: '#dcfce7',
+            backgroundColor: 'white'
+          }}
+        >
+          <Feather name="log-out" size={18} color="#16a34a" />
+          <Text style={{ marginLeft: 8, color: '#16a34a', fontWeight: '700', fontSize: 16 }}>Sign Out</Text>
+        </TouchableOpacity>
+
       </ScrollView>
-
-      {/* Notifications Modal */}
-      <Modal
-        visible={showNotifications}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={() => setShowNotifications(false)}
-      >
-        <View className="flex-1 bg-white">
-          <View className="p-4 border-b border-gray-200 flex-row justify-between items-center">
-            <Text className={`${isSmallScreen ? 'text-base' : 'text-lg'} font-semibold text-gray-800`}>Notifications</Text>
-            <TouchableOpacity
-              onPress={() => setShowNotifications(false)}
-              className="p-1.5"
-            >
-              <X size={isSmallScreen ? 18 : 20} color="#4b5563" />
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            data={notifications}
-            keyExtractor={(item) => item.id || item._id || Math.random().toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                className={`p-4 border-b border-gray-100 ${item.unread ? 'bg-blue-50' : ''}`}
-              >
-                <Text className={`${isSmallScreen ? 'text-sm' : 'text-base'} font-medium text-gray-800`}>{item.title}</Text>
-                <Text className={`${isSmallScreen ? 'text-xs' : 'text-sm'} text-gray-500 mt-1`}>{item.desc || item.message}</Text>
-                <Text className={`${isSmallScreen ? 'text-[10px]' : 'text-xs'} text-gray-400 mt-1`}>
-                  {item.createdAt ? format(new Date(item.createdAt), 'MMM d, h:mm a') : ''}
-                </Text>
-                {item.unread && (
-                  <View className="absolute top-4 right-4 w-2 h-2 rounded-full bg-blue-500" />
-                )}
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <View className="flex-1 items-center justify-center p-8">
-                <Text className="text-gray-500">No notifications</Text>
-              </View>
-            }
-          />
-        </View>
-      </Modal>
     </View>
   );
 };

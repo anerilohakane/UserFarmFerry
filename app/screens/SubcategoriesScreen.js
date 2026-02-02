@@ -244,8 +244,7 @@ const SubcategoriesScreen = ({ navigation, route }) => {
     const productId = product._id || product.id
     if (!isInCart(productId)) {
       try {
-        const response = await cartAPI.addToCart({ productId, quantity: 1 })
-        updateCartItems(response.data.data.cart.items)
+        await cartAPI.addToCart(productId, 1)
         Alert.alert("Added to Cart", `${product.name} has been added to your cart`)
       } catch (error) {
         console.error("Failed to add to cart:", error)

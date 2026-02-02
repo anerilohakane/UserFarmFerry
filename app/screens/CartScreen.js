@@ -1,618 +1,412 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Image, TouchableOpacity, SafeAreaView, StatusBar, Platform, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, ChevronRight, Heart, MapPin, Minus, Plus, Tag, Trash2 } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  Modal,
-  RefreshControl,
-  SafeAreaView,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
-import Header, { HeaderVariants } from '../components/ui/Header';
-import { useAppContext } from '../context/AppContext';
 import { cartAPI } from '../services/api';
 
-export default function CartScreen({ navigation }) {
-  const {
-    cartItems,
-    updateCartItems,
-    wishlistItems,
-    addToWishlist,
-    removeFromWishlist,
-  } = useAppContext();
-  const [isLoading, setIsLoading] = useState(true);
+const CartScreen = () => {
+  const navigation = useNavigation();
+
+  // State
+  const [cartData, setCartData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [cartGST, setCartGST] = useState(0);
-  const [cartGSTPercent, setCartGSTPercent] = useState(0);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalConfig, setModalConfig] = useState({
-    title: '',
-    message: '',
-    confirmText: '',
-    onConfirm: () => {},
-  });
-
-  // Get screen dimensions
-  const { width, height } = Dimensions.get('window');
-  const isSmallScreen = width < 375;
-  const isMediumScreen = width >= 375 && width < 768;
-  const isLargeScreen = width >= 768;
-
-  // Responsive sizing helper
-  const responsiveValue = (small, medium, large) => {
-    if (isSmallScreen) return small;
-    if (isMediumScreen) return medium;
-    return large;
-  };
-
-  const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
-
-  const fetchCart = async () => {
-    try {
-      const response = await cartAPI.getCart();
-      const cartData = response.data.data.cart;
-      const items = cartData.items;
-      setCartGST(cartData.gst || 0);
-      setCartGSTPercent(cartData.gstPercent || 0);
-      
-      console.log('=== CART DATA DEBUG ===');
-      console.log('Full cart response:', JSON.stringify(response.data.data.cart, null, 2));
-      
-      items.forEach((item, index) => {
-        console.log(`Item ${index + 1}:`, {
-          name: item.product?.name || item.name,
-          productId: item.product?._id,
-          gst: item.product?.gst,
-          gstType: typeof item.product?.gst,
-          price: item.price,
-          quantity: item.quantity,
-          totalPrice: item.totalPrice,
-          fullProductData: item.product
-        });
-      });
-      
-      console.log('🔄 Updating cart items in context...');
-      updateCartItems(items);
-      console.log('✅ Cart items updated in context');
-    } catch (error) {
-      console.error('Failed to fetch cart:', error);
-    } finally {
-      setIsLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const [error, setError] = useState(null);
+  const [updatingItems, setUpdatingItems] = useState({});
 
   useEffect(() => {
     fetchCart();
   }, []);
 
-  const handleRefresh = () => {
+  const fetchCart = async () => {
+    try {
+      setError(null);
+      const response = await cartAPI.getCart();
+      console.log('Cart API Response:', response.data);
+
+      if (response.data.success) {
+        // Backend returns { success: true, data: { userId, items, subtotal } }
+        setCartData(response.data.data);
+      } else {
+        setError('Failed to fetch cart');
+      }
+    } catch (err) {
+      console.error('Error fetching cart:', err);
+      setError(err.message || 'Failed to load cart. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const onRefresh = () => {
     setRefreshing(true);
     fetchCart();
   };
 
-  const handleUpdateQuantity = async (cartItemId, quantity) => {
+  const handleUpdateQuantity = async (productId, newQuantity) => {
+    if (newQuantity < 1) {
+      handleRemoveItem(productId);
+      return;
+    }
+
+    setUpdatingItems(prev => ({ ...prev, [productId]: true }));
     try {
-      const response = await cartAPI.updateCartItem(cartItemId, quantity);
-      updateCartItems(response.data.data.cart.items);
-    } catch (error) {
-      console.error('Failed to update quantity:', error);
+      await cartAPI.updateCartItem(productId, newQuantity);
+      await fetchCart();
+    } catch (err) {
+      console.error('Error updating quantity:', err);
+      Alert.alert('Error', 'Failed to update quantity');
+    } finally {
+      setUpdatingItems(prev => ({ ...prev, [productId]: false }));
     }
   };
 
-  const increaseQty = (item) => {
-    handleUpdateQuantity(item._id, item.quantity + 1);
-  };
-
-  const decreaseQty = (item) => {
-    if (item.quantity > 1) {
-      handleUpdateQuantity(item._id, item.quantity - 1);
-    } else {
-      const productName = item.product?.name || item.name;
-      removeFromCart(item._id, productName);
+  const handleRemoveItem = async (productId) => {
+    setUpdatingItems(prev => ({ ...prev, [productId]: true }));
+    try {
+      await cartAPI.removeCartItem(productId);
+      await fetchCart();
+    } catch (err) {
+      console.error('Error removing item:', err);
+      Alert.alert('Error', 'Failed to remove item');
+    } finally {
+      setUpdatingItems(prev => ({ ...prev, [productId]: false }));
     }
   };
 
-  const removeFromCart = async (cartItemId, productName) => {
-    setModalConfig({
-      title: 'Remove Item',
-      message: `Are you sure you want to remove "${productName}" from your cart?`,
-      confirmText: 'Remove',
-      onConfirm: async () => {
-        try {
-          const response = await cartAPI.removeCartItem(cartItemId);
-          updateCartItems(response.data.data.cart.items);
-          setModalConfig({
-            title: 'Removed',
-            message: `${productName} has been removed from your cart`,
-            confirmText: 'OK',
-            onConfirm: () => setModalVisible(false),
-          });
-        } catch (error) {
-          console.error('Failed to remove from cart:', error);
-          setModalConfig({
-            title: 'Error',
-            message: 'Failed to remove item from cart. Please try again.',
-            confirmText: 'OK',
-            onConfirm: () => setModalVisible(false),
-          });
-        }
-      },
-    });
-    setModalVisible(true);
-  };
-
-  const toggleWishlist = (product) => {
-    if (!product || !product.name) return;
-    const productId = product._id;
-    const productName = product.name;
-    if (isInWishlist(productId)) {
-      removeFromWishlist(productId);
-      setModalConfig({
-        title: 'Removed from Wishlist',
-        message: `${productName} has been removed from your wishlist`,
-        confirmText: 'OK',
-        onConfirm: () => setModalVisible(false),
-      });
-    } else {
-      addToWishlist(product);
-      setModalConfig({
-        title: 'Added to Wishlist',
-        message: `${productName} has been added to your wishlist`,
-        confirmText: 'OK',
-        onConfirm: () => setModalVisible(false),
-      });
+  const calculateTotals = () => {
+    if (!cartData || !cartData.items) {
+      return { orderTotal: 0, savings: 0, grandTotal: 0 };
     }
-    setModalVisible(true);
+
+    // Backend returns subtotal directly
+    const orderTotal = cartData.subtotal || 0;
+    const savings = 0; // Can add discount logic later if needed
+    const grandTotal = orderTotal;
+
+    return { orderTotal, savings, grandTotal };
   };
 
-  const isInWishlist = (id) => {
-    if (!id) {
-      console.warn('isInWishlist called with invalid id:', id);
-      return false;
-    }
-    return wishlistItems.some((item) => item && item._id === id);
-  };
+  const { orderTotal, savings, grandTotal } = calculateTotals();
+  const cartItems = cartData?.items || [];
+  const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  const moveToWishlist = (product) => {
-    if (!product || !product.name) return;
-    const productId = product._id;
-    const productName = product.name;
-    if (!isInWishlist(productId)) {
-      addToWishlist(product);
-    }
-    removeFromCart(product._id, productName);
-  };
 
-  const handlePromoCode = () => navigation.navigate('PromoCodeScreen');
-  const handleChangeAddress = () => navigation.navigate('SetDefaultAddress');
-
-  const GST_RATE = 0.05;
-  const PLATFORM_FEE = 2.0;
-
-  const getSubtotal = (items) => items.reduce((sum, item) => {
-    const price = item.discountedPrice !== undefined && item.discountedPrice !== null ? item.discountedPrice : item.price;
-    return sum + price * item.quantity;
-  }, 0);
-  
-  const getTotalDiscount = (items) => {
-    const totalOriginalPrice = items.reduce((sum, item) => {
-      const orig = item.originalPrice !== undefined && item.originalPrice !== null ? item.originalPrice : item.price;
-      return sum + orig * item.quantity;
-    }, 0);
-    const subtotal = getSubtotal(items);
-    return Math.max(0, totalOriginalPrice - subtotal);
-  };
-  
-  const getTotalGST = (items) => {
-    return items.reduce((sum, item) => {
-      const itemPrice = item.discountedPrice !== undefined && item.discountedPrice !== null ? item.discountedPrice : item.price;
-      const itemQuantity = item.quantity || 1;
-      let gstPercent = 0;
-      if (item.product && typeof item.product === 'object') {
-        gstPercent = item.product.gst || 0;
-      } else if (item.gst !== undefined) {
-        gstPercent = item.gst;
-      }
-      const gstAmount = (itemPrice * gstPercent / 100) * itemQuantity;
-      return sum + gstAmount;
-    }, 0);
-  };
-  
-  const getShipping = (subtotal = 0) => {
-    return subtotal >= 500 ? 0 : 20.0;
-  };
-  
-  const getPlatformFee = () => PLATFORM_FEE;
-  
-  const getGrandTotal = (items) => {
-    const subtotal = getSubtotal(items);
-    return subtotal + getTotalGST(items) + getShipping(subtotal) + getPlatformFee();
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#059669" />
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+        <StatusBar barStyle="light-content" backgroundColor="#166534" />
+
+        {/* Header - Fixed at top */}
+        <View style={{
+          backgroundColor: '#166534',
+          paddingBottom: 16,
+          paddingTop: 10
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
+            <View>
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
+                <Feather name="chevron-down" size={16} color="white" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+                <Feather name="clock" size={12} color="black" />
+                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
+                <Feather name="user" size={20} color="#166534" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#166534" />
+          <Text style={{ marginTop: 12, fontSize: 14, color: '#6b7280' }}>Loading cart...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
-  const handleProceedToCheckout = () => {
-    if (!Array.isArray(safeCartItems) || safeCartItems.length === 0) {
-      setModalConfig({
-        title: 'Cart is Empty',
-        message: 'Your cart is empty. Add some items to proceed to checkout.',
-        confirmText: 'OK',
-        onConfirm: () => setModalVisible(false),
-      });
-      setModalVisible(true);
-      return;
-    }
-    
-    const subtotal = getSubtotal(safeCartItems);
-    const gst = getTotalGST(safeCartItems);
-    const shipping = getShipping(subtotal);
-    const platformFee = getPlatformFee();
-    const total = getGrandTotal(safeCartItems);
-    const savings = getTotalDiscount(safeCartItems);
-    
-    console.log('CartScreen - Passing to Checkout:', {
-      subtotal,
-      gst,
-      shipping,
-      platformFee,
-      total,
-      savings,
-      itemsCount: safeCartItems.length
-    });
-    
-    navigation.navigate('OrderSummary', {
-      subtotal,
-      gst,
-      shipping,
-      platformFee,
-      total,
-      savings,
-      items: safeCartItems
-    });
-  };
+  if (error) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+        <StatusBar barStyle="light-content" backgroundColor="#166534" />
 
-  // Calculate checkout bar height dynamically
-  const checkoutBarHeight = (safeCartItems?.length ?? 0) > 0 
-    ? responsiveValue(320, 360, 380) 
-    : 0;
-
-  return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      {/* Custom Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View className="flex-1 justify-center items-center bg-black/50">
-          <View className={`bg-white rounded-xl p-6 mx-4 ${responsiveValue('w-11/12', 'w-3/4', 'w-2/3')} max-w-md shadow-lg`}>
-            <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-bold text-gray-800 mb-2`}>
-              {modalConfig.title}
-            </Text>
-            <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-600 mb-6`}>
-              {modalConfig.message}
-            </Text>
-            <View className="flex-row justify-end space-x-4">
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                className="px-4 py-2 rounded-lg bg-gray-200"
-              >
-                <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-800 font-semibold`}>
-                  Cancel
-                </Text>
+        {/* Header - Fixed at top */}
+        <View style={{
+          backgroundColor: '#166534',
+          paddingBottom: 16,
+          paddingTop: 10
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
+            <View>
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
+                <Feather name="chevron-down" size={16} color="white" />
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  modalConfig.onConfirm();
-                  if (modalConfig.confirmText !== 'OK') setModalVisible(false);
-                }}
-                className="px-4 py-2 rounded-lg bg-red-500"
-              >
-                <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-white font-semibold`}>
-                  {modalConfig.confirmText}
-                </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+                <Feather name="clock" size={12} color="black" />
+                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+              </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
+                <Feather name="user" size={20} color="#166534" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      </Modal>
 
-      <HeaderVariants.Back title="Cart" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <Feather name="alert-circle" size={48} color="#dc2626" />
+          <Text style={{ marginTop: 16, fontSize: 15, color: '#6b7280', textAlign: 'center' }}>{error}</Text>
+          <TouchableOpacity
+            style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#166534', borderRadius: 8 }}
+            onPress={fetchCart}
+          >
+            <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        className="flex-1"
-        contentContainerStyle={{ 
-          paddingBottom: checkoutBarHeight,
-          flexGrow: 1
-        }}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={handleRefresh} 
-            colors={["#059669"]} 
-          />
-        }
-        bounces={true}
-        overScrollMode="always"
-      >
-        {(safeCartItems?.length ?? 0) === 0 ? (
-          <View className="flex-1 items-center justify-center mt-20">
-            <View className={`${responsiveValue('w-16 h-16', 'w-20 h-20', 'w-24 h-24')} bg-green-100 rounded-full items-center justify-center mb-4`}>
-              <Text className="text-green-500 text-4xl">🛒</Text>
-            </View>
-            <Text className={`${responsiveValue('text-lg', 'text-xl', 'text-xl')} font-semibold text-gray-800`}>
-              Your cart is empty
-            </Text>
-            <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-500 mt-2`}>
-              Add some fresh items to get started!
-            </Text>
-          </View>
-        ) : (
-          <>
-            {/* Promo Code Section */}
-            <View className="bg-white mx-4 mt-4 rounded-xl p-4 border border-gray-100">
-              <TouchableOpacity
-                className="flex-row items-center justify-between"
-                onPress={handlePromoCode}
-              >
-                <View className="flex-row items-center">
-                  <Tag size={responsiveValue(18, 20, 20)} color="#059669" />
-                  <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-700 ml-3`}>
-                    Apply Promo Code
-                  </Text>
-                </View>
-                <ChevronRight size={responsiveValue(18, 20, 20)} color="#059669" />
+  if (!cartData || cartItems.length === 0) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+        <StatusBar barStyle="light-content" backgroundColor="#166534" />
+
+        {/* Header - Matching HomeScreen */}
+        <View style={{
+          backgroundColor: '#166534',
+          paddingBottom: 16,
+          paddingTop: 10
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
+            <View>
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
+                <Feather name="chevron-down" size={16} color="white" />
               </TouchableOpacity>
             </View>
-
-            {/* Cart Items */}
-            <View className={`px-4 ${responsiveValue('pt-3', 'pt-4', 'pt-4')}`}>
-              {safeCartItems.map((item) => {
-                if (!item) return null;
-                const originalTotal = item.originalPrice ? item.originalPrice * item.quantity : item.price * item.quantity;
-                const currentTotal = item.totalPrice || item.price * item.quantity;
-                const discount = Math.max(0, originalTotal - currentTotal);
-                
-                const itemTotal = item.totalPrice || item.price * item.quantity;
-                const imageSize = responsiveValue(80, 96, 100);
-
-                return (
-                  <View
-                    key={item._id}
-                    className={`bg-white rounded-xl mb-4 p-4 border border-gray-100 shadow-sm`}
-                  >
-                    <View className="flex-row items-start">
-                      {/* Product Image */}
-                      <View
-                        className={`${responsiveValue('w-20 h-20', 'w-24 h-24', 'w-28 h-28')} rounded-lg bg-gray-50 items-center justify-center mr-3 border border-gray-200 overflow-hidden`}
-                      >
-                        <Image
-                          source={{ uri: item.product?.images?.[0]?.url || item.product?.image || item.image || 'https://via.placeholder.com/96x96?text=No+Image' }}
-                          className="w-full h-full"
-                          resizeMode="contain"
-                        />
-                      </View>
-
-                      {/* Product Details */}
-                      <View className="flex-1">
-                        <View className="flex-row justify-between items-start mb-1">
-                          <Text 
-                            className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-semibold text-gray-900 flex-1`}
-                            numberOfLines={2}
-                          >
-                            {item.product?.name || item.name}
-                          </Text>
-                          <TouchableOpacity 
-                            onPress={() => removeFromCart(item._id, item.product?.name || item.name)}
-                            className="ml-2"
-                          >
-                            <Trash2 size={responsiveValue(18, 20, 20)} color="#ef4444" />
-                          </TouchableOpacity>
-                        </View>
-                        
-                        {/* Per-item GST display */}
-                        <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-blue-500 mb-1`}>
-                          GST: ₹{(() => {
-                            const itemPrice = item.discountedPrice !== undefined && item.discountedPrice !== null ? item.discountedPrice : item.price;
-                            const itemQuantity = item.quantity || 1;
-                            let gstPercent = 0;
-                            if (item.product && typeof item.product === 'object') {
-                              gstPercent = item.product.gst || 0;
-                            } else if (item.gst !== undefined) {
-                              gstPercent = item.gst;
-                            }
-                            return ((itemPrice * gstPercent / 100) * itemQuantity).toFixed(2);
-                          })()} ({(() => {
-                            let gstPercent = 0;
-                            if (item.product && typeof item.product === 'object') {
-                              gstPercent = item.product.gst || 0;
-                            } else if (item.gst !== undefined) {
-                              gstPercent = item.gst;
-                            }
-                            return gstPercent;
-                          })()}%)
-                        </Text>
-
-                        <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-500 mb-1`}>
-                          {item.unit || '500 g'}
-                        </Text>
-
-                        <View className="flex-row items-center mb-1">
-                          <Text className={`${responsiveValue('text-base', 'text-lg', 'text-lg')} font-bold text-green-700`}>
-                            ₹{(item.totalPrice || item.price * item.quantity).toFixed(2)}
-                          </Text>
-                          {item.originalPrice && (
-                            <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-400 line-through ml-2`}>
-                              ₹{(item.originalPrice * item.quantity).toFixed(2)}
-                            </Text>
-                          )}
-                        </View>
-
-                        {discount > 0 && (
-                          <Text className={`${responsiveValue('text-xs', 'text-xs', 'text-sm')} text-red-500 mb-1`}>
-                            You save: ₹{discount.toFixed(2)}
-                          </Text>
-                        )}
-
-                        <View className="flex-row items-center justify-between mt-2">
-                          {/* Quantity Selector */}
-                          <View className="flex-row items-center bg-green-50 rounded-full px-1 py-1">
-                            <TouchableOpacity
-                              onPress={() => decreaseQty(item)}
-                              className={`${responsiveValue('w-7 h-7', 'w-8 h-8', 'w-8 h-8')} rounded-full bg-white items-center justify-center border border-gray-200`}
-                            >
-                              <Minus size={responsiveValue(14, 16, 16)} color="#059669" />
-                            </TouchableOpacity>
-                            <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-medium text-gray-800 mx-3`}>
-                              {item.quantity}
-                            </Text>
-                            <TouchableOpacity
-                              onPress={() => increaseQty(item)}
-                              className={`${responsiveValue('w-7 h-7', 'w-8 h-8', 'w-8 h-8')} rounded-full bg-white items-center justify-center border border-gray-200`}
-                            >
-                              <Plus size={responsiveValue(14, 16, 16)} color="#059669" />
-                            </TouchableOpacity>
-                          </View>
-
-                          {/* Savings Tag */}
-                          <View className="flex-row items-center bg-green-100 px-3 py-1 rounded-full">
-                            <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} font-medium text-green-800`}>
-                              Har Din Sasta
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Move to Wishlist */}
-                        <TouchableOpacity
-                          className="flex-row items-center mt-3 pt-3 border-t border-gray-100"
-                          onPress={() => moveToWishlist(item)}
-                        >
-                          <Heart
-                            size={responsiveValue(16, 18, 18)}
-                            color={isInWishlist(item._id) ? "#ef4444" : "#059669"}
-                            fill={isInWishlist(item._id) ? "#ef4444" : "none"}
-                          />
-                          <Text className={`${responsiveValue('text-xs', 'text-sm', 'text-sm')} text-gray-600 ml-2`}>
-                            {isInWishlist(item._id) ? 'In Wishlist' : 'Move to Wishlist'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </>
-        )}
-      </ScrollView>
-
-      {/* Checkout Bar - Only shown when cart has items */}
-      {(safeCartItems?.length ?? 0) > 0 && (
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-          <View className="px-4 py-3">
-            <View className="flex-row justify-between items-center mb-1">
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-600`}>
-                Subtotal
-              </Text>
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-semibold text-gray-900`}>
-                ₹{getSubtotal(safeCartItems).toFixed(2)}
-              </Text>
-            </View>
-            <View className="flex-row justify-between items-center mb-1">
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-600`}>
-                Discount
-              </Text>
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-semibold text-red-500`}>
-                -₹{getTotalDiscount(safeCartItems).toFixed(2)}
-              </Text>
-            </View>
-            <View className="flex-row justify-between items-center mb-1">
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-600`}>
-                GST
-                {(() => {
-                  const gstRates = [...new Set(safeCartItems.map(item => {
-                    if (item.product && typeof item.product === 'object') {
-                      return item.product.gst || 0;
-                    } else if (item.gst !== undefined) {
-                      return item.gst;
-                    }
-                    return 5;
-                  }))];
-                  if (gstRates.length === 1) {
-                    return ` (${gstRates[0]}%)`;
-                  } else if (gstRates.length > 1) {
-                    const minRate = Math.min(...gstRates);
-                    const maxRate = Math.max(...gstRates);
-                    return minRate === maxRate ? ` (${minRate}%)` : ` (${minRate}%-${maxRate}%)`;
-                  }
-                  return '';
-                })()}
-              </Text>
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-semibold text-blue-500`}>
-                ₹{getTotalGST(safeCartItems).toFixed(2)}
-              </Text>
-            </View>
-            <View className="flex-row justify-between items-center mb-1">
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-600`}>
-                Platform Fee
-              </Text>
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-semibold text-gray-900`}>
-                ₹{getPlatformFee().toFixed(2)}
-              </Text>
-            </View>
-            <View className="flex-row justify-between items-center mb-2">
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} text-gray-600`}>
-                Shipping
-              </Text>
-              <Text className={`${responsiveValue('text-sm', 'text-base', 'text-base')} font-semibold text-gray-900`}>
-                ₹{getShipping(getSubtotal(safeCartItems)).toFixed(2)}
-              </Text>
-            </View>
-            <View className="border-t border-gray-200 pt-2 mt-1">
-              <View className="flex-row justify-between items-center">
-                <Text className={`${responsiveValue('text-base', 'text-lg', 'text-lg')} font-bold text-gray-900`}>
-                  Total
-                </Text>
-                <Text className={`${responsiveValue('text-base', 'text-lg', 'text-lg')} font-bold text-green-700`}>
-                  ₹{getGrandTotal(safeCartItems).toFixed(2)}
-                </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+                <Feather name="clock" size={12} color="black" />
+                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
               </View>
+              <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
+                <Feather name="user" size={20} color="#166534" />
+              </TouchableOpacity>
             </View>
+          </View>
+        </View>
 
-            {/* Checkout Button */}
-            <TouchableOpacity
-              onPress={handleProceedToCheckout}
-              activeOpacity={0.9}
-              className={`mt-4 rounded-xl overflow-hidden shadow-md`}
-            >
-              <LinearGradient
-                colors={['#10b981', '#059669']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                className={`${responsiveValue('py-3', 'py-4', 'py-4')} items-center justify-center`}
-              >
-                <Text className={`${responsiveValue('text-base', 'text-lg', 'text-lg')} font-semibold text-white`}>
-                  Proceed to Checkout
-                </Text>
-              </LinearGradient>
+        {/* Empty State */}
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+          <MaterialCommunityIcons name="cart-outline" size={80} color="#d1d5db" />
+          <Text style={{ marginTop: 16, fontSize: 18, fontWeight: '700', color: '#1f2937' }}>Your Cart is Empty</Text>
+          <Text style={{ marginTop: 8, fontSize: 14, color: '#6b7280', textAlign: 'center' }}>Add products to your cart to see them here</Text>
+          <TouchableOpacity
+            style={{ marginTop: 24, paddingHorizontal: 32, paddingVertical: 12, backgroundColor: '#166534', borderRadius: 8 }}
+            onPress={() => navigation.navigate('Home')}
+          >
+            <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>Start Shopping</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#166534" />
+
+      {/* Header - Matching HomeScreen */}
+      <View style={{
+        backgroundColor: '#166534',
+        paddingBottom: 16,
+        paddingTop: 10
+      }}>
+        {/* Top Row: Brand, Location, Timer, Profile */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
+          <View>
+            <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
+              <Feather name="chevron-down" size={16} color="white" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {/* 5 mins Badge */}
+            <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+              <Feather name="clock" size={12} color="black" />
+              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+            </View>
+            {/* Profile Icon */}
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
+              <Feather name="user" size={20} color="#166534" />
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </View>
+
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#166534']}
+            tintColor="#166534"
+          />
+        }
+      >
+        {/* Cart Items */}
+        <View style={{ padding: 16 }}>
+          {cartItems.map((item) => (
+            <View key={item.productId} style={{
+              flexDirection: 'row',
+              backgroundColor: 'white',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: '#f3f4f6',
+              padding: 12,
+              marginBottom: 16,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 4,
+              elevation: 2,
+              opacity: updatingItems[item.productId] ? 0.6 : 1
+            }}>
+              {/* Image */}
+              <Image
+                source={{ uri: item.product?.image || item.product?.images?.[0]?.url || 'https://via.placeholder.com/150' }}
+                style={{ width: 70, height: 70, borderRadius: 12, backgroundColor: '#f9fafb' }}
+                resizeMode="cover"
+              />
+
+              {/* Details */}
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: '#1f2937', flex: 1 }}>
+                    {item.product?.name || 'Product'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveItem(item.productId)}
+                    disabled={updatingItems[item.productId]}
+                  >
+                    <Feather name="trash-2" size={18} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                  {item.product?.unit || 'unit'}
+                </Text>
+
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#1f2937' }}>
+                    ₹{item.product?.price || 0}
+                  </Text>
+
+                  {/* Stepper */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <TouchableOpacity
+                      style={{ width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => handleUpdateQuantity(item.productId, item.quantity - 1)}
+                      disabled={updatingItems[item.productId]}
+                    >
+                      <Feather name="minus" size={14} color="#374151" />
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#1f2937' }}>{item.quantity}</Text>
+                    <TouchableOpacity
+                      style={{ width: 28, height: 28, borderRadius: 8, borderWidth: 1, borderColor: '#d1d5db', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={() => handleUpdateQuantity(item.productId, item.quantity + 1)}
+                      disabled={updatingItems[item.productId]}
+                    >
+                      <Feather name="plus" size={14} color="#374151" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Price Summary */}
+        <View style={{ paddingHorizontal: 16, marginTop: 8 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#1f2937', marginBottom: 12 }}>Price Summary</Text>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ color: '#4b5563' }}>Order Total</Text>
+            <Text style={{ color: '#1f2937' }}>₹{orderTotal.toFixed(2)}</Text>
+          </View>
+          {savings > 0 && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ color: '#4b5563' }}>Savings</Text>
+              <Text style={{ color: '#166534', fontWeight: '600' }}>-₹{savings.toFixed(2)}</Text>
+            </View>
+          )}
+          <View style={{ height: 1, backgroundColor: '#e5e7eb', marginBottom: 12 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ color: '#1f2937', fontWeight: '700' }}>Grand Total</Text>
+            <Text style={{ color: '#1f2937', fontWeight: '700', fontSize: 18 }}>₹{grandTotal.toFixed(2)}</Text>
+          </View>
+        </View>
+
+      </ScrollView>
+
+
+      {/* Sticky Footer */}
+      <View style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        borderTopWidth: 1,
+        borderTopColor: '#f3f4f6',
+        padding: 16,
+        paddingBottom: Platform.OS === 'ios' ? 32 : 16,
+        elevation: 10,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#1f2937' }}>₹{grandTotal.toFixed(2)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialCommunityIcons name="truck-delivery" size={16} color="#65a30d" />
+            <Text style={{ color: '#65a30d', fontWeight: '600', marginLeft: 4, fontSize: 13 }}>Free Shipping</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity style={{
+          backgroundColor: '#65a30d',
+          borderRadius: 12,
+          paddingVertical: 14,
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <Text style={{ color: 'white', fontSize: 16, fontWeight: '700', marginRight: 8 }}>Checkout Now</Text>
+          <Feather name="arrow-right" size={20} color="white" />
+        </TouchableOpacity>
+        <Text style={{ textAlign: 'center', fontSize: 10, color: '#9ca3af', marginTop: 8 }}>to avail 5% off on prepaid orders</Text>
+      </View>
+
     </SafeAreaView>
   );
-}
+};
+
+export default CartScreen;

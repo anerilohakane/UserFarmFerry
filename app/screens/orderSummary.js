@@ -90,13 +90,13 @@ const OrderSummaryScreen = ({ route }) => {
       isAuthenticated,
       user: userData
         ? {
-            _id: userData._id,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            email: userData.email,
-            phone: userData.phone,
-            hasEmail: !!userData.email,
-          }
+          _id: userData._id,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email: userData.email,
+          phone: userData.phone,
+          hasEmail: !!userData.email,
+        }
         : null,
       fullUserObject: user,
       userKeys: user ? Object.keys(user) : [],
@@ -299,8 +299,8 @@ const OrderSummaryScreen = ({ route }) => {
         try {
           const response =
             await categoriesAPI.getCategoryHandlingFee(categoryId);
-            console.log("Categories API response :- ", response);
-            
+          console.log("Categories API response :- ", response);
+
           const handlingFee = response?.data?.data?.category?.handlingFee || 0;
           fees[categoryId] = handlingFee;
           totalFee += handlingFee;
@@ -536,15 +536,15 @@ const OrderSummaryScreen = ({ route }) => {
       console.log("Sending order data:", orderData);
       const response = await ordersAPI.createOrder(orderData);
       console.log("Order API response:", response);
-      
+
       // Extract order ID from various possible response structures
-      const createdOrderId = 
+      const createdOrderId =
         response?.data?.data?.orders?.[0]?._id ||
-        response?.data?.data?.order?._id || 
+        response?.data?.data?.order?._id ||
         response?.data?.data?._id ||
         response?.data?.orders?.[0]?._id ||
         response?.data?.order?._id;
-      
+
       if (createdOrderId) {
         setOrderId(createdOrderId);
         console.log("Order created successfully with ID:", createdOrderId);
@@ -576,7 +576,7 @@ const OrderSummaryScreen = ({ route }) => {
         if (paymentResult && paymentResult.success) {
           console.log("Payment successful, creating order...");
           const orderResponse = await createOrderWithPayment(paymentResult);
-          
+
           // Check if order was created successfully
           if (orderResponse && (orderResponse.data || orderResponse.status === 201)) {
             updateCartItems([]);
@@ -596,7 +596,7 @@ const OrderSummaryScreen = ({ route }) => {
         // For COD, create order directly
         console.log("Creating COD order...");
         const orderResponse = await createOrderWithPayment();
-        
+
         // Check if order was created successfully (including network error cases)
         if (orderResponse && (orderResponse.data || orderResponse.status === 201 || orderResponse.status >= 200)) {
           console.log("COD order created successfully");
@@ -645,8 +645,8 @@ const OrderSummaryScreen = ({ route }) => {
         Alert.alert(
           "Order Failed",
           errorMessage ||
-            error.response?.data?.message ||
-            "An unexpected error occurred. Please try again."
+          error.response?.data?.message ||
+          "An unexpected error occurred. Please try again."
         );
       }
     } finally {
@@ -1808,7 +1808,7 @@ const OrderSummaryScreen = ({ route }) => {
           {/* Offers Banner */}
           <TouchableOpacity
             className="bg-amber-50 rounded-lg p-3 mb-4 border border-amber-200 flex-row justify-between items-center"
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <Text
               className="text-amber-800 font-medium"
@@ -2007,8 +2007,8 @@ const OrderSummaryScreen = ({ route }) => {
                           return customer?.firstName && customer?.lastName
                             ? `${customer.firstName} ${customer.lastName}`
                             : customer?.firstName ||
-                                customer?.lastName ||
-                                customer?.email?.split("@")[0];
+                            customer?.lastName ||
+                            customer?.email?.split("@")[0];
                         })()}
                       </Text>
                       <Text className="text-xs text-blue-700">

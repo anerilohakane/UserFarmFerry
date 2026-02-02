@@ -59,30 +59,31 @@ export const PAYMENT_METHODS = {
 // Navigation Types
 export const SCREEN_NAMES = {
   // Auth Screens
+  GET_STARTED: 'GetStarted',
   LOGIN: 'Login',
   REGISTER: 'Register',
   FORGOT_PASSWORD: 'ForgotPassword',
   RESET_PASSWORD: 'ResetPassword',
   RESET_PASSWORD_WITH_OTP: 'ResetPasswordWithOTP',
   PHONE_VERIFICATION: 'PhoneVerification',
-  
+
   // Main App Screens
   DASHBOARD: 'Dashboard',
   PRODUCTS: 'Products',
   ORDERS: 'Orders',
   PROFILE: 'Profile',
-  
+
   // Product Screens
   PRODUCT_LIST: 'ProductList',
   PRODUCT_DETAILS: 'ProductDetails',
   ADD_PRODUCT: 'AddProduct',
   EDIT_PRODUCT: 'EditProduct',
-  
+
   // Order Screens
   ORDER_LIST: 'OrderList',
   ORDER_DETAILS: 'OrderDetails',
   ADD_ADDRESS: 'AddAddress',
-  
+
   // Profile Screens
   EDIT_PROFILE: 'EditProfile',
   VERIFICATION_STATUS: 'VerificationStatus',

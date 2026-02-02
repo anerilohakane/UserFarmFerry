@@ -23,10 +23,10 @@ api.interceptors.request.use(
       '/auth/reset-password-otp', // OTP reset endpoint
       '/auth/register/validate', // New registration validation endpoint
       '/auth/register/complete', // New registration completion endpoint
-      '/auth/send-phone-verification', // Phone verification endpoint
-      '/auth/verify-phone-otp', // OTP verification endpoint
+      '/auth/login/send-otp', // Phone verification endpoint
+      '/auth/login/verify-otp', // OTP verification endpoint
     ];
-    
+
     // Check if the URL contains any of the auth endpoints (not just ends with)
     const shouldSkipAuth = authEndpoints.some((ep) => config.url.includes(ep));
     if (shouldSkipAuth) {
@@ -95,7 +95,7 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.REFRESH_TOKEN);
-        
+
         if (refreshToken) {
           const response = await axios.post(
             `${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.AUTH.REFRESH_TOKEN}`,
@@ -117,7 +117,7 @@ api.interceptors.response.use(
           CONFIG.STORAGE_KEYS.REFRESH_TOKEN,
           CONFIG.STORAGE_KEYS.USER_DATA,
         ]);
-        
+
         // You can emit an event here to notify the app to redirect to login
         // EventBus.emit('AUTH_EXPIRED');
       }
@@ -135,11 +135,11 @@ export const authAPI = {
   forgotPassword: (email, role = 'customer') => api.post(CONFIG.ENDPOINTS.AUTH.FORGOT_PASSWORD, { email, role }),
   resetPassword: (token, password) => api.post(`${CONFIG.ENDPOINTS.AUTH.RESET_PASSWORD}/${token}`, { password }),
   resetPasswordWithOTP: (email, otp, password) => api.post('/auth/reset-password-otp', { email, otp, password }),
-  
+
   changePassword: (currentPassword, newPassword) => api.post('/auth/change-password', { currentPassword, newPassword }),
-  sendPhoneVerification: (data) => api.post('/auth/send-phone-verification', data),
-  verifyOtp: (data) => api.post('/auth/verify-phone-otp', data),
-  
+  sendPhoneVerification: (data) => api.post('/auth/login/send-otp', data),
+  verifyOtp: (data) => api.post('/auth/login/verify-otp', data),
+
   // New two-phase registration endpoints
   registerValidate: (userData) => api.post('/auth/register/validate', userData),
   registerComplete: (userData) => api.post('/auth/register/complete', userData),
@@ -168,26 +168,26 @@ export const ordersAPI = {
       return response;
     } catch (error) {
       console.error('Order creation error:', error);
-      
+
       // If we get a network error but order creation was successful (SMS sent)
       // Treat it as success to prevent UI error
       if (error.code === 'NETWORK_ERROR' || error.message === 'Network Error') {
         console.log('Network error detected - assuming order was created successfully');
         return {
           status: 201,
-          data: { 
-            success: true, 
+          data: {
+            success: true,
             message: 'Order created successfully',
             data: { order: { _id: `order_${Date.now()}` } }
           }
         };
       }
-      
+
       if (error.response?.status >= 200 && error.response?.status < 300) {
         console.log('Order created successfully despite error handling');
         return error.response;
       }
-      
+
       throw error;
     }
   },
@@ -200,10 +200,146 @@ export const ordersAPI = {
 };
 
 export const cartAPI = {
-  getCart: () => api.get(CONFIG.ENDPOINTS.CART.GET),
-  addToCart: (item) => api.post(CONFIG.ENDPOINTS.CART.ADD, item),
-  updateCartItem: (id, quantity) => api.put(`${CONFIG.ENDPOINTS.CART.UPDATE}/${id}`, { quantity }),
-  removeCartItem: (id) => api.delete(`${CONFIG.ENDPOINTS.CART.REMOVE}/${id}`),
+  getCart: async () => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.get(`${CONFIG.ENDPOINTS.CART.GET}?userId=${userId}`);
+    } catch (error) {
+      console.error('Cart API - getCart error:', error);
+      throw error;
+    }
+  },
+
+  addToCart: async (productId, quantity = 1) => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      console.log('📦 Cart API - Adding to cart:', { userId, productId, quantity });
+
+      return api.post(CONFIG.ENDPOINTS.CART.ADD, {
+        userId,
+        productId,
+        quantity: Number(quantity)
+      });
+    } catch (error) {
+      console.error('Cart API - addToCart error:', error);
+      throw error;
+    }
+  },
+
+  updateCartItem: async (productId, quantity) => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.patch(CONFIG.ENDPOINTS.CART.UPDATE, {
+        userId,
+        productId,
+        quantity: Number(quantity)
+      });
+    } catch (error) {
+      console.error('Cart API - updateCartItem error:', error);
+      throw error;
+    }
+  },
+
+  incrementCartItem: async (productId) => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.patch(CONFIG.ENDPOINTS.CART.UPDATE, {
+        userId,
+        productId,
+        increment: true
+      });
+    } catch (error) {
+      console.error('Cart API - incrementCartItem error:', error);
+      throw error;
+    }
+  },
+
+  decrementCartItem: async (productId) => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.patch(CONFIG.ENDPOINTS.CART.UPDATE, {
+        userId,
+        productId,
+        decrement: true
+      });
+    } catch (error) {
+      console.error('Cart API - decrementCartItem error:', error);
+      throw error;
+    }
+  },
+
+  removeCartItem: async (productId) => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.delete(CONFIG.ENDPOINTS.CART.REMOVE, {
+        data: { userId, productId }
+      });
+    } catch (error) {
+      console.error('Cart API - removeCartItem error:', error);
+      throw error;
+    }
+  },
+
+  clearCart: async () => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.delete(CONFIG.ENDPOINTS.CART.REMOVE, {
+        data: { userId }
+      });
+    } catch (error) {
+      console.error('Cart API - clearCart error:', error);
+      throw error;
+    }
+  },
 };
 
 export const categoriesAPI = {
@@ -221,9 +357,54 @@ export const notificationsAPI = {
 };
 
 export const wishlistAPI = {
-  getWishlist: () => api.get('/customers/wishlist'),
-  addToWishlist: (productId) => api.post('/customers/wishlist', { productId }),
-  removeFromWishlist: (productId) => api.delete(`/customers/wishlist/${productId}`),
+  getWishlist: async () => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.get(`/wishlist?userId=${userId}`);
+    } catch (error) {
+      console.error('Wishlist API - getWishlist error:', error);
+      throw error;
+    }
+  },
+  addToWishlist: async (productId) => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.post('/wishlist', { productId, userId });
+    } catch (error) {
+      console.error('Wishlist API - addToWishlist error:', error);
+      throw error;
+    }
+  },
+  removeFromWishlist: async (productId) => {
+    try {
+      const userData = await AsyncStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA);
+      const user = userData ? JSON.parse(userData) : null;
+      const userId = user?._id;
+
+      if (!userId) {
+        throw new Error('User ID not found. Please login again.');
+      }
+
+      return api.delete(`/wishlist/${productId}?userId=${userId}`);
+    } catch (error) {
+      console.error('Wishlist API - removeFromWishlist error:', error);
+      throw error;
+    }
+  },
 };
 
 export const reviewsAPI = {

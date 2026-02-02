@@ -1,7 +1,8 @@
 // MainTabNavigator.js (No changes needed, but included for completeness)
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/HomeScreen'; // or FarmFerryHome
 import CartScreen from '../screens/CartScreen';
 import OrdersScreen from '../screens/OrdersScreen';
@@ -14,13 +15,14 @@ const Tab = createBottomTabNavigator();
 
 export default function MainTabNavigator() {
   const { cartItems, wishlistItems } = useAppContext(); // ✅ use actual context arrays
+  const insets = useSafeAreaInsets();
 
   const cartCount = Array.isArray(cartItems) ? cartItems.length : 0;
   const wishlistCount = Array.isArray(wishlistItems) ? wishlistItems.length : 0;
 
   const renderIcon = (Icon, focused, badge) => (
     <View className="items-center relative">
-      <Icon size={22} color={focused ? '#16a34a' : '#6b7280'} />
+      <Icon size={22} color={focused ? '#166534' : '#6b7280'} />
       {badge > 0 && (
         <View className="absolute -top-1 -right-2 bg-red-500 w-4 h-4 rounded-full items-center justify-center">
           <Text className="text-white text-[10px] font-bold">{badge}</Text>
@@ -33,18 +35,20 @@ export default function MainTabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#16a34a', // ✅ Tailwind green-600
+        tabBarActiveTintColor: '#166534', // ✅ Theme color
         tabBarInactiveTintColor: '#9ca3af', // gray-400 (optional)
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
+          marginTop: -2,
         },
         tabBarStyle: {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#e5e7eb',
-          height: 80,
-          paddingBottom: 6,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          paddingTop: 8,
         },
       }}
     >
