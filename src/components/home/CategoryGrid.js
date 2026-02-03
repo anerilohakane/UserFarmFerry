@@ -8,7 +8,7 @@ const CategoryGrid = ({ categories, onCategoryPress }) => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: '#1f2937' }}>Shop by Category</Text>
                 <TouchableOpacity>
-                    <Text style={{ fontSize: 13, color: '#6b7280' }}>See all</Text>
+                    <Text style={{ fontSize: 13, color: '#004C46', fontWeight: '600' }}>See all</Text>
                 </TouchableOpacity>
             </View>
 

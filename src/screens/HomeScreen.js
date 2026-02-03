@@ -1,39 +1,29 @@
 import React, { useEffect, useState, useRef } from "react";
-import {
-  View,
-  ScrollView,
-  SafeAreaView,
-  StatusBar,
-  Image,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  Dimensions,
-  FlatList,
-  Animated,
-  Alert
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { View, Text, ScrollView, Image, TouchableOpacity, StatusBar, TextInput, FlatList, Dimensions, Animated, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Services (Keep your existing service calls)
-import { categoriesAPI, productsAPI, cartAPI, wishlistAPI } from "../services/api";
+import { productsAPI, categoriesAPI, cartAPI, wishlistAPI } from '../services/api';
 import { CONFIG } from '../constants/config';
 import { useAppContext } from '../context/AppContext';
 import Toast from 'react-native-toast-message';
 
 const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding constrained by parent view
 
 // --- COLORS ---
 const THEME = {
   primary: '#004C46',      // Dark teal header
   background: '#f3f4f6',   // Global background
-  accent: '#166534',       // Green for buttons/tags
+  accent: '#004C46',       // Green for buttons/tags
   text: '#1f2937',
   textLight: '#6b7280',
   white: '#ffffff',
-  bannerGreen: '#1fa362',  // Steal deal green
+  bannerGreen: '#004C46',  // Steal deal green
 
   // Category Backgrounds (Approximate from screenshots)
   catBlue: '#eef2ff',      // Light blue for Fresh/Snacks
@@ -161,12 +151,39 @@ const HomeScreen = () => {
   const cartPopupAnim = useRef(new Animated.Value(100)).current;
 
   // Banner auto-scroll state
-  const bannerScrollRef = useRef(null);
+  const bannerScrollRef = React.useRef(null);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+
+  const popularProductScrollRef = React.useRef(null);
+  const [popularProductIndex, setPopularProductIndex] = useState(0);
+
+  // Dynamic Section Data
+  const [popularProducts, setPopularProducts] = useState([]);
+  const [bestSellingProducts, setBestSellingProducts] = useState([]);
 
   // Category filtering
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [allProducts, setAllProducts] = useState([]);
+
+  // Filter products based on search query
+  useEffect(() => {
+    if (!allProducts.length) return;
+
+    let filtered = allProducts;
+
+    // Filter by Category first if selected
+    if (selectedCategory && selectedCategory.id !== 'all') {
+      filtered = filtered.filter(p => p.categoryId === selectedCategory.id);
+    }
+
+    // Filter by Search Query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => p.name.toLowerCase().includes(query));
+    }
+
+    setProducts(filtered);
+  }, [searchQuery, selectedCategory, allProducts]);
 
   // Fetch products and categories
   useEffect(() => {
@@ -194,6 +211,21 @@ const HomeScreen = () => {
         }));
         setAllProducts(transformedProducts);
         setProducts(transformedProducts);
+
+        // --- RANDOM SELECTION FOR DYNAMIC SECTIONS ---
+        if (transformedProducts.length > 0) {
+          // Shuffle function
+          const shuffle = (array) => [...array].sort(() => 0.5 - Math.random());
+          const shuffled = shuffle(transformedProducts);
+
+          // Take 3-4 for Popular Banner
+          const popular = shuffled.slice(0, 4);
+          setPopularProducts(popular);
+
+          // Take 4-5 different ones for Best Selling (or just next slice)
+          const bestSelling = shuffled.slice(4, 9);
+          setBestSellingProducts(bestSelling);
+        }
 
         // Transform categories data with images
         const categoriesData = categoriesRes?.data?.data || [];
@@ -293,6 +325,22 @@ const HomeScreen = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-scroll POPULAR PRODUCT banner every 4 seconds
+  useEffect(() => {
+    const scrollPopular = () => {
+      setPopularProductIndex((prev) => {
+        const next = (prev + 1) % 3; // 3 items
+        if (popularProductScrollRef.current) {
+          popularProductScrollRef.current.scrollToIndex({ index: next, animated: true });
+        }
+        return next;
+      });
+    };
+
+    const popInterval = setInterval(scrollPopular, 4000);
+    return () => clearInterval(popInterval);
+  }, []);
+
   // Add to cart handler
   const handleAddToCart = async (product) => {
     setAddingToCart(product.id);
@@ -310,7 +358,6 @@ const HomeScreen = () => {
         setShowCartPopup(false);
       }, 3000);
 
-      Alert.alert('Success', `${product.name} added to cart!`);
     } catch (error) {
       console.error('❌ Add to cart error:', error);
       Alert.alert('Error', error.message || 'Failed to add to cart');
@@ -387,16 +434,12 @@ const HomeScreen = () => {
     if (category.id === 'all') {
       // Show all products
       setSelectedCategory(null);
-      setProducts(allProducts);
     } else if (selectedCategory?.id === category.id) {
       // Deselect - show all products
       setSelectedCategory(null);
-      setProducts(allProducts);
     } else {
       // Select category - filter products
       setSelectedCategory(category);
-      const filtered = allProducts.filter(p => p.categoryId === category.id);
-      setProducts(filtered);
     }
   };
 
@@ -410,7 +453,7 @@ const HomeScreen = () => {
       >
         <View style={{
           width: 48, height: 48, borderRadius: 24,
-          backgroundColor: isSelected ? '#166534' : '#0d5e56',
+          backgroundColor: isSelected ? '#004C46' : '#0d5e56',
           justifyContent: 'center', alignItems: 'center', marginBottom: 6,
           borderWidth: isSelected ? 2 : 0,
           borderColor: '#ffffff',
@@ -443,128 +486,143 @@ const HomeScreen = () => {
 
     return (
       <View style={{
-        width: (width - 48) / 2,
         backgroundColor: 'white',
         borderRadius: 16,
-        padding: 12,
+        padding: 10,
         marginBottom: 16,
+        width: CARD_WIDTH,
         borderWidth: 1,
-        borderColor: '#f0f0f0',
+        borderColor: '#e5e7eb',
+        // Shadow
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        minHeight: 280
       }}>
-        {/* Discount Badge */}
-        {item.discount && (
-          <View style={{
-            position: 'absolute',
-            top: 8,
-            left: 8,
-            backgroundColor: THEME.accent,
-            borderRadius: 6,
-            paddingHorizontal: 6,
-            paddingVertical: 3,
-            zIndex: 1
-          }}>
-            <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{item.discount}</Text>
+        {/* Top Section */}
+        <View>
+          {/* Discount Badge */}
+          {item.discount && (
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              backgroundColor: THEME.accent,
+              borderRadius: 4,
+              paddingHorizontal: 6,
+              paddingVertical: 4,
+              zIndex: 1
+            }}>
+              <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{item.discount}</Text>
+            </View>
+          )}
+
+          {/* Wishlist Heart Icon */}
+          <TouchableOpacity
+            onPress={() => handleToggleWishlist(item)}
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              backgroundColor: 'white',
+              borderRadius: 20,
+              padding: 6,
+              zIndex: 1,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 1
+            }}
+          >
+            <MaterialCommunityIcons
+              name={isInWishlist ? 'heart' : 'heart-outline'}
+              size={18}
+              color={isInWishlist ? THEME.accent : '#9ca3af'}
+            />
+          </TouchableOpacity>
+
+          {/* Product Image */}
+          <View style={{ width: '100%', height: 120, alignItems: 'center', justifyContent: 'center', marginBottom: 8, marginTop: 14 }}>
+            <Image
+              source={{ uri: item.image }}
+              style={{
+                width: '100%',
+                height: '100%',
+                resizeMode: 'contain',
+              }}
+            />
           </View>
-        )}
 
-        {/* Wishlist Heart Icon */}
-        <TouchableOpacity
-          onPress={() => handleToggleWishlist(item)}
-          style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            backgroundColor: 'white',
-            borderRadius: 50,
-            padding: 6,
-            zIndex: 1,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.1,
-            shadowRadius: 3,
-            elevation: 2
-          }}
-        >
-          <MaterialCommunityIcons
-            name={isInWishlist ? 'heart' : 'heart-outline'}
-            size={20}
-            color={isInWishlist ? '#166534' : '#9ca3af'}
-          />
-        </TouchableOpacity>
+          {/* Product Name & Weight */}
+          <View style={{ minHeight: 60 }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '600',
+                color: THEME.text,
+                marginBottom: 4,
+                lineHeight: 18
+              }}
+              numberOfLines={2}
+            >
+              {item.name}
+            </Text>
 
-        {/* Product Image */}
-        <Image
-          source={{ uri: item.image }}
-          style={{
-            width: '100%',
-            height: 140,
-            resizeMode: 'contain',
-            marginVertical: 8,
-            borderRadius: 8
-          }}
-        />
-
-        {/* Product Name */}
-        <Text
-          style={{
-            fontSize: 14,
-            fontWeight: '600',
-            color: THEME.text,
-            marginBottom: 4,
-            lineHeight: 18
-          }}
-          numberOfLines={2}
-        >
-          {item.name}
-        </Text>
-
-        {/* Weight */}
-        <Text style={{ fontSize: 12, color: THEME.textLight, marginBottom: 8 }}>
-          {item.weight}
-        </Text>
-
-        {/* Price Row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <View>
-            {item.mrp > item.price && (
-              <Text style={{ fontSize: 11, textDecorationLine: 'line-through', color: THEME.textLight }}>
-                ₹{item.mrp}
-              </Text>
-            )}
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>
-              ₹{item.price}
+            <Text style={{ fontSize: 12, color: THEME.textLight }}>
+              {item.weight}
             </Text>
           </View>
         </View>
 
-        {/* ADD Button */}
-        <TouchableOpacity
-          style={{
-            backgroundColor: addingToCart === item.id ? '#d1d5db' : THEME.accent,
-            borderRadius: 8,
-            paddingVertical: 10,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            shadowColor: THEME.accent,
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 4,
-            elevation: 2
-          }}
-          onPress={() => handleAddToCart(item)}
-          disabled={addingToCart === item.id}
-        >
-          <Feather name="shopping-bag" size={14} color="white" style={{ marginRight: 6 }} />
-          <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>
-            {addingToCart === item.id ? 'ADDING...' : 'ADD'}
-          </Text>
-        </TouchableOpacity>
+        {/* Bottom Section: Price & Button */}
+        <View style={{ marginTop: 8 }}>
+          {/* Price Row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginRight: 8 }}>
+              ₹{item.price}
+            </Text>
+            {item.mrp > item.price && (
+              <Text style={{ fontSize: 12, textDecorationLine: 'line-through', color: THEME.textLight }}>
+                ₹{item.mrp}
+              </Text>
+            )}
+          </View>
+
+          {/* ADD Button */}
+          <TouchableOpacity
+            style={{
+              backgroundColor: addingToCart === item.id ? '#f3f4f6' : THEME.accent,
+              borderRadius: 8,
+              paddingVertical: 8,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              borderWidth: addingToCart === item.id ? 1 : 0,
+              borderColor: '#e5e7eb'
+            }}
+            onPress={() => handleAddToCart(item)}
+            disabled={addingToCart === item.id}
+          >
+            <Feather
+              name="shopping-bag"
+              size={14}
+              color={addingToCart === item.id ? THEME.accent : 'white'}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={{
+              color: addingToCart === item.id ? THEME.accent : 'white',
+              fontWeight: '700',
+              fontSize: 13
+            }}>
+              {addingToCart === item.id ? 'ADDED' : 'ADD'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -609,14 +667,14 @@ const HomeScreen = () => {
         }),
         height: scrollY.interpolate({
           inputRange: [0, 100],
-          outputRange: [75, 0],
+          outputRange: [70, 0],
           extrapolate: 'clamp'
         }),
         overflow: 'hidden'
       }}>
 
         {/* Top Row: Brand, Location, Timer, Profile */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 26 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20 }}>
           <View>
             <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
@@ -629,7 +687,7 @@ const HomeScreen = () => {
             {/* 5 mins Badge */}
             <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
               <Feather name="clock" size={12} color="black" />
-              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
             </View>
             {/* Profile Icon */}
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
@@ -642,7 +700,7 @@ const HomeScreen = () => {
       {/* ================= STICKY SEARCH & CATEGORIES ================= */}
       <Animated.View style={{
         backgroundColor: THEME.primary,
-        paddingBottom: 16,
+        paddingBottom: 14,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -651,8 +709,8 @@ const HomeScreen = () => {
       }}>
 
         {/* Search Row */}
-        <View style={{ marginHorizontal: 16, marginTop: 16, flexDirection: 'row', alignItems: 'center' }}>
-          {/* Search Bar */}
+        <View style={{ marginHorizontal: 16, marginTop: 4, flexDirection: 'row', alignItems: 'center' }}>
+          {/* Search Bar - Full Width */}
           <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 24, paddingHorizontal: 10, height: 44 }}>
             <Feather name="search" size={20} color="#9ca3af" />
             <TextInput
@@ -663,11 +721,6 @@ const HomeScreen = () => {
               onChangeText={setSearchQuery}
             />
           </View>
-
-          {/* Note/List Icon (The square green icon to the right) */}
-          <TouchableOpacity style={{ marginLeft: 10, backgroundColor: 'white', height: 44, width: 44, borderRadius: 24, alignItems: 'center', justifyContent: 'center' }}>
-            <Feather name="edit-3" size={20} color={THEME.primary} />
-          </TouchableOpacity>
         </View>
 
         {/* Quick Links Rail */}
@@ -743,8 +796,8 @@ const HomeScreen = () => {
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Fresh Products</Text>
               <Text style={{ fontSize: 13, color: THEME.textLight, marginTop: 2 }}>Handpicked for you</Text>
             </View>
-            <TouchableOpacity>
-              <Text style={{ color: THEME.accent, fontWeight: '600', fontSize: 14 }}>View All →</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('AllCategories')} style={{ backgroundColor: '#004C46', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+              <Text style={{ color: 'white', fontWeight: '600', fontSize: 12 }}>View All →</Text>
             </TouchableOpacity>
           </View>
 
@@ -763,13 +816,13 @@ const HomeScreen = () => {
           <TouchableOpacity
             onPress={() => navigation.navigate('Cart')}
             style={{
-              backgroundColor: '#166534',
+              backgroundColor: '#004C46',
               paddingVertical: 14,
               borderRadius: 12,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              shadowColor: '#166534',
+              shadowColor: '#004C46',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.2,
               shadowRadius: 8,
@@ -790,11 +843,11 @@ const HomeScreen = () => {
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1.5,
-              borderColor: '#166534'
+              borderColor: '#004C46'
             }}
           >
-            <Feather name="package" size={20} color="#166534" style={{ marginRight: 8 }} />
-            <Text style={{ color: '#166534', fontWeight: 'bold', fontSize: 16 }}>View Orders</Text>
+            <Feather name="package" size={20} color="#004C46" style={{ marginRight: 8 }} />
+            <Text style={{ color: '#004C46', fontWeight: 'bold', fontSize: 16 }}>View Orders</Text>
           </TouchableOpacity>
         </View>
 
@@ -803,117 +856,139 @@ const HomeScreen = () => {
 
           {/* Why Choose Us Section */}
           <View style={{ backgroundColor: '#f0fdf4', borderRadius: 16, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#bbf7d0' }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#166534', marginBottom: 16 }}>Why Choose FarmFerry?</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#004C46', marginBottom: 16 }}>Why Choose FarmFerry?</Text>
             <View style={{ gap: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#166534', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#004C46', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
                   <Feather name="check-circle" size={20} color="white" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#14532d' }}>Farm Fresh Products</Text>
-                  <Text style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>Directly from local farms</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#004C46' }}>Farm Fresh Products</Text>
+                  <Text style={{ fontSize: 12, color: '#004C46', marginTop: 2 }}>Directly from local farms</Text>
                 </View>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#166534', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#004C46', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
                   <Feather name="truck" size={20} color="white" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#14532d' }}>5-Minute Delivery</Text>
-                  <Text style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>Quick delivery to your doorstep</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#004C46' }}>5-Minute Delivery</Text>
+                  <Text style={{ fontSize: 12, color: '#004C46', marginTop: 2 }}>Quick delivery to your doorstep</Text>
                 </View>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#166534', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#004C46', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
                   <Feather name="shield" size={20} color="white" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#14532d' }}>Quality Guaranteed</Text>
-                  <Text style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>100% fresh or money back</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#004C46' }}>Quality Guaranteed</Text>
+                  <Text style={{ fontSize: 12, color: '#004C46', marginTop: 2 }}>100% fresh or money back</Text>
                 </View>
               </View>
             </View>
           </View>
 
-          {/* Popular Categories Grid */}
-          <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 16 }}>Popular Categories</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-              {[
-                { name: 'Vegetables', icon: 'leaf', color: '#166534' },
-                { name: 'Fruits', icon: 'feather', color: '#dc2626' },
-                { name: 'Dairy', icon: 'droplet', color: '#2563eb' },
-                { name: 'Bakery', icon: 'coffee', color: '#ca8a04' },
-              ].map((cat, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={{
-                    flex: 1,
-                    minWidth: '45%',
-                    backgroundColor: '#f9fafb',
-                    borderRadius: 12,
-                    padding: 16,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: '#e5e7eb'
-                  }}
-                >
-                  <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: cat.color + '20', justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}>
-                    <Feather name={cat.icon} size={24} color={cat.color} />
-                  </View>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{cat.name}</Text>
-                </TouchableOpacity>
-              ))}
+
+
+          {/* ================= NEW SECTIONS ================= */}
+
+          {/* Our Popular Product (Auto-Switching Banner) */}
+          <View style={{ marginBottom: 24 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Our Popular Products</Text>
             </View>
+            <FlatList
+              ref={popularProductScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              data={popularProducts}
+              keyExtractor={item => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{
+                    width: width - 32,
+                    height: 180,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    marginRight: 0, // Paging enabled requires full width items
+                    position: 'relative',
+                    backgroundColor: '#e5e7eb' // Fallback color
+                  }}
+                  onPress={() => navigation.navigate('AllCategories', { searchQuery: item.name })}
+                >
+                  <Image
+                    source={{ uri: item.image || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=800' }}
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.8)']}
+                    style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20 }}
+                  >
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                      <View style={{ flex: 1, marginRight: 16 }}>
+                        <View style={{ backgroundColor: THEME.accent, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginBottom: 8 }}>
+                          <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{item.offer || 'Hot Deal'}</Text>
+                        </View>
+                        <Text numberOfLines={1} style={{ color: 'white', fontSize: 22, fontWeight: 'bold' }}>{item.name}</Text>
+                        <Text style={{ color: '#e5e7eb', fontSize: 14 }}>Now at ₹{item.price}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => navigation.navigate('AllCategories', { searchQuery: item.name })}
+                        style={{ backgroundColor: 'white', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 }}
+                      >
+                        <Text style={{ color: THEME.primary, fontWeight: 'bold' }}>Buy Now</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+            />
           </View>
 
-          {/* Customer Reviews */}
-          <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 16 }}>What Our Customers Say</Text>
-            <View style={{ gap: 12 }}>
-              {[
-                { name: 'Priya Sharma', rating: 5, text: 'Fresh vegetables delivered on time!' },
-                { name: 'Rajesh Kumar', rating: 5, text: 'Best quality products and quick delivery.' },
-                { name: 'Anjali Patel', rating: 4, text: 'Great service and affordable prices!' },
-              ].map((review, idx) => (
-                <View key={idx} style={{ backgroundColor: '#f9fafb', borderRadius: 12, padding: 12, borderLeftWidth: 3, borderLeftColor: '#166534' }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#111827' }}>{review.name}</Text>
-                    <View style={{ flexDirection: 'row' }}>
-                      {[...Array(review.rating)].map((_, i) => (
-                        <Feather key={i} name="star" size={12} color="#fbbf24" fill="#fbbf24" />
-                      ))}
+          {/* Most Selling Product (Static Vertical List) */}
+          <View style={{ marginBottom: 30 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 16 }}>Most Selling Products</Text>
+            <View style={{ gap: 16 }}>
+              {bestSellingProducts.map((item) => (
+                <View key={item.id} style={{ flexDirection: 'row', backgroundColor: 'white', borderRadius: 12, padding: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+                  <Image source={{ uri: item.image }} style={{ width: 80, height: 80, borderRadius: 8, backgroundColor: '#f3f4f6' }} resizeMode="contain" />
+                  <View style={{ flex: 1, marginLeft: 16, justifyContent: 'center' }}>
+                    <Text numberOfLines={1} style={{ fontSize: 16, fontWeight: '600', color: '#1f2937' }}>{item.name}</Text>
+                    <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{item.weight || item.unit}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                      <Feather name="star" size={12} color="#fbbf24" fill="#fbbf24" />
+                      <Text style={{ fontSize: 12, color: '#4b5563', marginLeft: 4, fontWeight: '600' }}>4.8</Text>
                     </View>
                   </View>
-                  <Text style={{ fontSize: 12, color: '#6b7280' }}>{review.text}</Text>
+                  <View style={{ justifyContent: 'center', alignItems: 'flex-end', gap: 10 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1f2937' }}>₹{item.price}</Text>
+                    <TouchableOpacity
+                      onPress={() => handleAddToCart(item)}
+                      disabled={addingToCart === item.id}
+                      style={{
+                        backgroundColor: addingToCart === item.id ? '#f3f4f6' : THEME.primary,
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        minWidth: 60,
+                        alignItems: 'center'
+                      }}
+                    >
+                      {addingToCart === item.id ? (
+                        <ActivityIndicator size="small" color={THEME.primary} />
+                      ) : (
+                        <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </View>
           </View>
 
-          {/* App Features */}
-          <View style={{ backgroundColor: '#eff6ff', borderRadius: 16, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#bfdbfe' }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1e40af', marginBottom: 16 }}>Download Our App</Text>
-            <View style={{ gap: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Feather name="smartphone" size={18} color="#2563eb" style={{ marginRight: 10 }} />
-                <Text style={{ fontSize: 13, color: '#1e40af' }}>Easy ordering on the go</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Feather name="bell" size={18} color="#2563eb" style={{ marginRight: 10 }} />
-                <Text style={{ fontSize: 13, color: '#1e40af' }}>Get instant delivery updates</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Feather name="gift" size={18} color="#2563eb" style={{ marginRight: 10 }} />
-                <Text style={{ fontSize: 13, color: '#1e40af' }}>Exclusive app-only offers</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={{ backgroundColor: '#2563eb', paddingVertical: 12, borderRadius: 10, marginTop: 16, alignItems: 'center' }}
-            >
-              <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>Download Now</Text>
-            </TouchableOpacity>
-          </View>
+
 
         </View>
 
@@ -942,7 +1017,7 @@ const HomeScreen = () => {
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'center',
-              shadowColor: "#166534",
+              shadowColor: "#004C46",
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.3,
               shadowRadius: 10,

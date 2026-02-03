@@ -19,7 +19,7 @@ const Button = ({
     const baseStyles = 'rounded-lg flex-row items-center justify-center';
     switch (variant) {
       case 'primary':
-        return `${baseStyles} bg-green-600 ${disabled ? 'bg-gray-400' : 'active:bg-green-700'}`;
+        return `${baseStyles} bg-[#004C46] ${disabled ? 'bg-gray-400' : 'active:bg-[#003d38]'}`;
       case 'secondary':
         return `${baseStyles} bg-gray-200 ${disabled ? 'bg-gray-100' : 'active:bg-gray-300'}`;
       case 'outline':
@@ -29,7 +29,7 @@ const Button = ({
       case 'ghost':
         return `${baseStyles} bg-transparent ${disabled ? '' : 'active:bg-gray-100'}`;
       default:
-        return `${baseStyles} bg-green-600 ${disabled ? 'bg-gray-400' : 'active:bg-green-700'}`;
+        return `${baseStyles} bg-[#004C46] ${disabled ? 'bg-gray-400' : 'active:bg-[#003d38]'}`;
     }
   };
 
@@ -98,9 +98,9 @@ const Button = ({
     if (loading) {
       return (
         <View className="flex-row items-center">
-          <ActivityIndicator 
-            size="small" 
-            color={variant === 'outline' || variant === 'ghost' ? '#059669' : '#ffffff'} 
+          <ActivityIndicator
+            size="small"
+            color={variant === 'outline' || variant === 'ghost' ? '#059669' : '#ffffff'}
           />
           <Text className={`${textStyles} ml-2`}>Loading...</Text>
         </View>
@@ -139,4 +139,3 @@ const Button = ({
 
 export default Button;
 
- 

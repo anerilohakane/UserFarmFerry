@@ -21,6 +21,7 @@ config.resolver = {
             const nativeOnlyModules = [
                 'react-native-maps',
                 '@react-native-community/geolocation',
+                'react-native-razorpay',
             ];
 
             if (nativeOnlyModules.some(mod => moduleName.includes(mod))) {

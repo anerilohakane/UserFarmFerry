@@ -158,7 +158,7 @@ const OTPVerificationForm = ({
       <BlurView intensity={30} tint="light" style={styles.blurContainer}>
 
         <View style={styles.iconContainer}>
-          <ShieldCheck size={48} color="#10b981" />
+          <ShieldCheck size={48} color="#004C46" />
         </View>
 
         <Text style={styles.title}>{title}</Text>
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     letterSpacing: 8,
   },
   button: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#004C46',
     borderRadius: 12,
     height: 54,
     width: '100%',
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
-    shadowColor: '#10b981',
+    shadowColor: '#004C46',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   resendText: {
-    color: '#10b981',
+    color: '#004C46',
     fontWeight: '600',
     fontSize: 14,
   },

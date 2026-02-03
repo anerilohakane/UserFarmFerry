@@ -152,7 +152,7 @@ const RateReviewScreen = () => {
       <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
         <StatusBar barStyle="dark-content" backgroundColor="#fff" />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#16a34a" />
+          <ActivityIndicator size="large" color="#004C46" />
           <Text style={{ marginTop: 12, fontSize: 14, color: '#6b7280' }}>Loading products...</Text>
         </View>
       </SafeAreaView>
@@ -270,7 +270,7 @@ const RateReviewScreen = () => {
                   />
                   <TouchableOpacity
                     style={{
-                      backgroundColor: '#16a34a',
+                      backgroundColor: '#004C46',
                       paddingVertical: 12,
                       paddingHorizontal: 16,
                       borderRadius: 8,

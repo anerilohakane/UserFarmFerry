@@ -317,15 +317,22 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: '500',
   },
+  brandName: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#004C46', // Dark Teal
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
   button: {
-    backgroundColor: '#10b981', // Emerald 500
+    backgroundColor: '#004C46', // Dark Teal
     borderRadius: 12,
     height: 54,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
-    shadowColor: '#10b981',
+    shadowColor: '#004C46',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -353,7 +360,7 @@ const styles = StyleSheet.create({
   },
   changeNumberText: {
     fontSize: 13,
-    color: '#10b981',
+    color: '#004C46',
     fontWeight: '600',
   },
   resendContainer: {

@@ -29,36 +29,36 @@ export default function Header({
   showNotifications = false,
   showSearch = false,
   showFilter = false,
-  
+
   // Custom actions
   onBackPress,
   onLogoPress,
   onSearchPress,
   onFilterPress,
   onNotificationPress,
-  
+
   // Search props
   searchQuery = "",
   onSearchChange,
   searchPlaceholder = "Search...",
-  
+
   // Styling
   backgroundColor = "white",
   textColor = "#374151",
-  iconColor = "#10B981",
+  iconColor = "#004C46",
   borderColor = "#e5e7eb",
-  
+
   // Layout
   paddingHorizontal = 16,
   showBorder = true,
   showShadow = true,
-  
+
   // Children for custom content
   children,
-  
+
   // Right side custom content
   rightContent,
-  
+
   // Status bar
   statusBarStyle = "dark-content",
   statusBarBackgroundColor = "#ffffff"
@@ -66,10 +66,10 @@ export default function Header({
   const navigation = useNavigation();
   const { unreadNotificationCount } = useAppContext();
   const { address } = useUserLocation();
-  
+
   // Get status bar height
   const statusBarHeight = Constants.statusBarHeight;
-  
+
   const handleBackPress = () => {
     if (onBackPress) {
       onBackPress();
@@ -77,7 +77,7 @@ export default function Header({
       navigation.goBack();
     }
   };
-  
+
   const handleLogoPress = () => {
     if (onLogoPress) {
       onLogoPress();
@@ -85,7 +85,7 @@ export default function Header({
       navigation.navigate('LogoScreen');
     }
   };
-  
+
   const handleNotificationPress = () => {
     if (onNotificationPress) {
       onNotificationPress();
@@ -96,9 +96,9 @@ export default function Header({
 
   return (
     <>
-      <StatusBar 
-        barStyle={statusBarStyle} 
-        backgroundColor={statusBarBackgroundColor} 
+      <StatusBar
+        barStyle={statusBarStyle}
+        backgroundColor={statusBarBackgroundColor}
       />
       <View
         style={{
@@ -117,7 +117,7 @@ export default function Header({
       >
         {/* Main Header Content */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          
+
           {/* Left Section */}
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
             {/* Back Button */}
@@ -132,31 +132,31 @@ export default function Header({
                 }}
                 hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
               >
-                <ArrowLeft 
-                  size={responsiveValue(18, 20, 22)} 
-                  color={iconColor} 
+                <ArrowLeft
+                  size={responsiveValue(18, 20, 22)}
+                  color={iconColor}
                 />
               </TouchableOpacity>
             )}
-            
-                         {/* Logo */}
-             {showLogo && (
-               <TouchableOpacity
-                 onPress={handleLogoPress}
-                 style={{ marginRight: responsiveValue(12, 16, 20) }}
-               >
-                 <Image
-                   source={require('../../../assets/images/Icon2.jpeg')}
-                   style={{
-                     width: responsiveValue(55, 60, 64),
-                     height: responsiveValue(55, 60, 64),
-                     borderRadius: 12,
-                     resizeMode: 'cover',
-                   }}
-                 />
-               </TouchableOpacity>
-             )}
-            
+
+            {/* Logo */}
+            {showLogo && (
+              <TouchableOpacity
+                onPress={handleLogoPress}
+                style={{ marginRight: responsiveValue(12, 16, 20) }}
+              >
+                <Image
+                  source={require('../../../assets/images/Icon2.jpeg')}
+                  style={{
+                    width: responsiveValue(55, 60, 64),
+                    height: responsiveValue(55, 60, 64),
+                    borderRadius: 12,
+                    resizeMode: 'cover',
+                  }}
+                />
+              </TouchableOpacity>
+            )}
+
             {/* Title and Location */}
             <View style={{ flex: 1 }}>
               <Text
@@ -170,18 +170,18 @@ export default function Header({
               >
                 {title}
               </Text>
-              
+
               {showLocation && (
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <MapPin 
-                    size={responsiveValue(12, 14, 16)} 
-                    color="#16a34a" 
+                  <MapPin
+                    size={responsiveValue(12, 14, 16)}
+                    color="#004C46"
                     style={{ marginRight: 4 }}
                   />
                   <Text
                     style={{
                       fontSize: responsiveValue(12, 14, 16),
-                      color: '#16a34a',
+                      color: '#004C46',
                       fontWeight: '500',
                     }}
                     numberOfLines={1}
@@ -192,7 +192,7 @@ export default function Header({
               )}
             </View>
           </View>
-          
+
           {/* Right Section */}
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {/* Search Button */}
@@ -212,7 +212,7 @@ export default function Header({
                 <Search size={responsiveValue(18, 20, 22)} color={iconColor} />
               </TouchableOpacity>
             )}
-            
+
             {/* Filter Button */}
             {showFilter && (
               <TouchableOpacity
@@ -230,7 +230,7 @@ export default function Header({
                 <Filter size={responsiveValue(18, 20, 22)} color={iconColor} />
               </TouchableOpacity>
             )}
-            
+
             {/* Notifications */}
             {showNotifications && (
               <TouchableOpacity
@@ -264,27 +264,27 @@ export default function Header({
                       borderColor: '#f0fdf4',
                     }}
                   >
-                    <Text style={{ 
-                      color: 'white', 
-                      fontSize: responsiveValue(10, 11, 12), 
-                      fontWeight: '800' 
+                    <Text style={{
+                      color: 'white',
+                      fontSize: responsiveValue(10, 11, 12),
+                      fontWeight: '800'
                     }}>
                       {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                     </Text>
                   </View>
                 )}
-                <Bell size={responsiveValue(18, 20, 22)} color="#16a34a" />
+                <Bell size={responsiveValue(18, 20, 22)} color="#004C46" />
               </TouchableOpacity>
             )}
-            
+
             {/* Custom Right Content */}
             {rightContent}
           </View>
         </View>
-        
+
         {/* Search Bar */}
         {showSearch && onSearchChange && (
-          <View style={{ 
+          <View style={{
             marginTop: responsiveValue(12, 16, 20),
             flexDirection: 'row',
             alignItems: 'center',
@@ -311,7 +311,7 @@ export default function Header({
             />
           </View>
         )}
-        
+
         {/* Custom Children Content */}
         {children}
       </View>
@@ -331,7 +331,7 @@ export const HeaderVariants = {
       {...props}
     />
   ),
-  
+
   // Simple back button header
   Back: (props) => (
     <Header
@@ -339,7 +339,7 @@ export const HeaderVariants = {
       {...props}
     />
   ),
-  
+
   // Header with back button and search
   BackWithSearch: (props) => (
     <Header
@@ -348,7 +348,7 @@ export const HeaderVariants = {
       {...props}
     />
   ),
-  
+
   // Header with back button and filter
   BackWithFilter: (props) => (
     <Header
@@ -357,7 +357,7 @@ export const HeaderVariants = {
       {...props}
     />
   ),
-  
+
   // Header with back button, search, and filter
   BackWithSearchAndFilter: (props) => (
     <Header
@@ -367,7 +367,7 @@ export const HeaderVariants = {
       {...props}
     />
   ),
-  
+
   // Header with notifications only
   Notifications: (props) => (
     <Header

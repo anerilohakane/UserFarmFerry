@@ -2,9 +2,9 @@ import "./global.css";
 import React from "react";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AuthProvider } from "./app/context/AuthContext";
-import { AppProvider } from "./app/context/AppContext";
-import AppNavigator from "./app/navigation/AppNavigator";
+import { AuthProvider } from "./src/context/AuthContext";
+import { AppProvider } from "./src/context/AppContext";
+import AppNavigator from "./src/navigation/AppNavigator";
 import Toast from "react-native-toast-message";
 import { NavigationContainer } from "@react-navigation/native";
 

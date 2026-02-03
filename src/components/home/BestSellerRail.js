@@ -103,7 +103,7 @@ const BestSellerRail = ({ products = [] }) => {
 
                 {/* Price */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#16a34a', marginRight: 6 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#004C46', marginRight: 6 }}>
                         ₹{item.price}
                     </Text>
                     {item.originalPrice && item.originalPrice > item.price && (
@@ -116,7 +116,7 @@ const BestSellerRail = ({ products = [] }) => {
                 {/* Add to Cart Button */}
                 <TouchableOpacity
                     style={{
-                        backgroundColor: '#16a34a',
+                        backgroundColor: '#004C46',
                         borderRadius: 8,
                         paddingVertical: 8,
                         flexDirection: 'row',
@@ -140,7 +140,7 @@ const BestSellerRail = ({ products = [] }) => {
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: '#1f2937' }}>Bestsellers</Text>
                 <TouchableOpacity>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#16a34a' }}>View All</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#004C46' }}>View All</Text>
                 </TouchableOpacity>
             </View>
 

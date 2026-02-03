@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Image, TouchableOpacity, SafeAreaView, StatusBar, Platform, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, StatusBar, Platform, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { cartAPI } from '../services/api';
 
@@ -18,6 +19,13 @@ const CartScreen = () => {
   useEffect(() => {
     fetchCart();
   }, []);
+
+  // Auto-refresh cart when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchCart();
+    }, [])
+  );
 
   const fetchCart = async () => {
     try {
@@ -96,22 +104,16 @@ const CartScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#166534" />
-
-        {/* Header - Fixed at top */}
-        <View style={{
-          backgroundColor: '#166534',
-          paddingBottom: 16,
-          paddingTop: 10
-        }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="light-content" backgroundColor="#004C46" />
+        <View style={{ backgroundColor: '#004C46', paddingBottom: 16, paddingTop: 10 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
             <View>
               <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                 <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
                 <Feather name="chevron-down" size={16} color="white" />
-              </TouchableOpacity>
+              </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
@@ -119,14 +121,13 @@ const CartScreen = () => {
                 <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-                <Feather name="user" size={20} color="#166534" />
+                <Feather name="user" size={20} color="#004C46" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
-
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#166534" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+          <ActivityIndicator size="large" color="#004C46" />
           <Text style={{ marginTop: 12, fontSize: 14, color: '#6b7280' }}>Loading cart...</Text>
         </View>
       </SafeAreaView>
@@ -135,22 +136,16 @@ const CartScreen = () => {
 
   if (error) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#166534" />
-
-        {/* Header - Fixed at top */}
-        <View style={{
-          backgroundColor: '#166534',
-          paddingBottom: 16,
-          paddingTop: 10
-        }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="light-content" backgroundColor="#004C46" />
+        <View style={{ backgroundColor: '#004C46', paddingBottom: 16, paddingTop: 10 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
             <View>
               <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                 <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
                 <Feather name="chevron-down" size={16} color="white" />
-              </TouchableOpacity>
+              </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
@@ -158,17 +153,16 @@ const CartScreen = () => {
                 <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-                <Feather name="user" size={20} color="#166534" />
+                <Feather name="user" size={20} color="#004C46" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
-
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32, backgroundColor: 'white' }}>
           <Feather name="alert-circle" size={48} color="#dc2626" />
           <Text style={{ marginTop: 16, fontSize: 15, color: '#6b7280', textAlign: 'center' }}>{error}</Text>
           <TouchableOpacity
-            style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#166534', borderRadius: 8 }}
+            style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#004C46', borderRadius: 8 }}
             onPress={fetchCart}
           >
             <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>Retry</Text>
@@ -180,22 +174,16 @@ const CartScreen = () => {
 
   if (!cartData || cartItems.length === 0) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#166534" />
-
-        {/* Header - Matching HomeScreen */}
-        <View style={{
-          backgroundColor: '#166534',
-          paddingBottom: 16,
-          paddingTop: 10
-        }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="light-content" backgroundColor="#004C46" />
+        <View style={{ backgroundColor: '#004C46', paddingBottom: 16, paddingTop: 10 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
             <View>
               <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                 <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
                 <Feather name="chevron-down" size={16} color="white" />
-              </TouchableOpacity>
+              </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
@@ -203,19 +191,17 @@ const CartScreen = () => {
                 <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-                <Feather name="user" size={20} color="#166534" />
+                <Feather name="user" size={20} color="#004C46" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
-
-        {/* Empty State */}
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32, backgroundColor: 'white' }}>
           <MaterialCommunityIcons name="cart-outline" size={80} color="#d1d5db" />
           <Text style={{ marginTop: 16, fontSize: 18, fontWeight: '700', color: '#1f2937' }}>Your Cart is Empty</Text>
           <Text style={{ marginTop: 8, fontSize: 14, color: '#6b7280', textAlign: 'center' }}>Add products to your cart to see them here</Text>
           <TouchableOpacity
-            style={{ marginTop: 24, paddingHorizontal: 32, paddingVertical: 12, backgroundColor: '#166534', borderRadius: 8 }}
+            style={{ marginTop: 24, paddingHorizontal: 32, paddingVertical: 12, backgroundColor: '#004C46', borderRadius: 8 }}
             onPress={() => navigation.navigate('Home')}
           >
             <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>Start Shopping</Text>
@@ -226,17 +212,17 @@ const CartScreen = () => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#166534" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#004C46" />
 
       {/* Header - Matching HomeScreen */}
       <View style={{
-        backgroundColor: '#166534',
+        backgroundColor: '#004C46',
         paddingBottom: 16,
         paddingTop: 10
       }}>
         {/* Top Row: Brand, Location, Timer, Profile */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 }}>
           <View>
             <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
@@ -253,7 +239,7 @@ const CartScreen = () => {
             </View>
             {/* Profile Icon */}
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-              <Feather name="user" size={20} color="#166534" />
+              <Feather name="user" size={20} color="#004C46" />
             </TouchableOpacity>
           </View>
         </View>
@@ -261,12 +247,13 @@ const CartScreen = () => {
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 150 }}
+        style={{ flex: 1, backgroundColor: 'white' }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#166534']}
-            tintColor="#166534"
+            colors={['#004C46']}
+            tintColor="#004C46"
           />
         }
       >
@@ -353,7 +340,7 @@ const CartScreen = () => {
           {savings > 0 && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
               <Text style={{ color: '#4b5563' }}>Savings</Text>
-              <Text style={{ color: '#166534', fontWeight: '600' }}>-₹{savings.toFixed(2)}</Text>
+              <Text style={{ color: '#004C46', fontWeight: '600' }}>-₹{savings.toFixed(2)}</Text>
             </View>
           )}
           <View style={{ height: 1, backgroundColor: '#e5e7eb', marginBottom: 12 }} />
@@ -386,19 +373,22 @@ const CartScreen = () => {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <Text style={{ fontSize: 24, fontWeight: '700', color: '#1f2937' }}>₹{grandTotal.toFixed(2)}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <MaterialCommunityIcons name="truck-delivery" size={16} color="#65a30d" />
-            <Text style={{ color: '#65a30d', fontWeight: '600', marginLeft: 4, fontSize: 13 }}>Free Shipping</Text>
+            <MaterialCommunityIcons name="truck-delivery" size={16} color="#004C46" />
+            <Text style={{ color: '#004C46', fontWeight: '600', marginLeft: 4, fontSize: 13 }}>Free Shipping</Text>
           </View>
         </View>
 
-        <TouchableOpacity style={{
-          backgroundColor: '#65a30d',
-          borderRadius: 12,
-          paddingVertical: 14,
-          flexDirection: 'row',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#004C46',
+            borderRadius: 12,
+            paddingVertical: 14,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+          onPress={() => navigation.navigate('OrderSummary', { items: cartItems })}
+        >
           <Text style={{ color: 'white', fontSize: 16, fontWeight: '700', marginRight: 8 }}>Checkout Now</Text>
           <Feather name="arrow-right" size={20} color="white" />
         </TouchableOpacity>

@@ -30,11 +30,11 @@ export const CONFIG = {
 
         // Customer endpoints
         CUSTOMER: {
-            PROFILE: '/customers/profile',
-            UPDATE_PROFILE: '/customers/profile',
-            ADD_ADDRESS: '/customers/addresses',
-            UPDATE_ADDRESS: '/customers/addresses',
-            DELETE_ADDRESS: '/customers/addresses',
+            PROFILE: '/customer/profile',
+            UPDATE_PROFILE: '/customer/profile',
+            ADD_ADDRESS: '/customer/addresses',
+            UPDATE_ADDRESS: '/customer/addresses',
+            DELETE_ADDRESS: '/customer/addresses',
         },
 
         // Products endpoints

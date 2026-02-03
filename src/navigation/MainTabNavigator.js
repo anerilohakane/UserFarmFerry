@@ -35,7 +35,7 @@ export default function MainTabNavigator() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#166534', // ✅ Theme color
+        tabBarActiveTintColor: '#004C46', // ✅ Theme color
         tabBarInactiveTintColor: '#9ca3af', // gray-400 (optional)
         tabBarLabelStyle: {
           fontSize: 11,

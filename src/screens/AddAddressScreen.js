@@ -151,7 +151,23 @@ const AddAddressScreen = () => {
     setIsLoading(true);
     setGeneralError('');
     try {
-      await customerAPI.addAddress(data);
+      // Map form data to backend schema expected format
+      const payload = {
+        ...data,
+        type: data.addressType ? data.addressType.toLowerCase() : 'home', // Map addressType to type and lowercase
+        // Coordinates support if we want to add them to schema later, currently not in schema but good to have prepared
+        // location: (route.params?.latitude && route.params?.longitude) ? {
+        //   type: 'Point',
+        //   coordinates: [route.params.longitude, route.params.latitude]
+        // } : undefined
+      };
+
+      // Clean up frontend-only fields
+      delete payload.addressType;
+
+      console.log('Sending address payload:', payload);
+
+      await customerAPI.addAddress(payload);
       Alert.alert('Success', 'Address added successfully!', [
         {
           text: 'Continue to Order',
@@ -162,8 +178,10 @@ const AddAddressScreen = () => {
         },
       ]);
     } catch (error) {
+      console.error('Address save error:', error);
       const backendErrors = error.response?.data?.errors;
-      const backendMessage = error.response?.data?.message;
+      const backendMessage = error.response?.data?.message || error.response?.data?.error; // Check for 'error' field too
+
       let mapped = false;
       if (Array.isArray(backendErrors)) {
         backendErrors.forEach((err) => {
@@ -174,7 +192,10 @@ const AddAddressScreen = () => {
         });
       }
       if (!mapped) {
-        setGeneralError(backendMessage || 'An unexpected error occurred. Please try again.');
+        const debugError = JSON.stringify(error.response?.data || error.message || error);
+        console.log('Full Error:', debugError); // Console log for developer tools
+        Alert.alert('Error Details', `Debug Info: ${debugError}`); // Alert for user/tester
+        setGeneralError(backendMessage || `An unexpected error occurred: ${error.message}`);
       }
     } finally {
       setIsLoading(false);

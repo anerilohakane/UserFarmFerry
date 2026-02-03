@@ -97,7 +97,7 @@ const OrdersScreen = () => {
         if (['pending', 'processing', 'confirmed'].includes(statusLower)) {
             return { bg: '#fff7ed', text: '#ea580c' }; // Orange
         } else if (statusLower === 'delivered') {
-            return { bg: '#f0fdf4', text: '#166534' }; // Green
+            return { bg: '#f0fdf4', text: '#004C46' }; // Green
         } else if (['cancelled', 'returned'].includes(statusLower)) {
             return { bg: '#fef2f2', text: '#dc2626' }; // Red
         } else if (['shipped', 'out for delivery'].includes(statusLower)) {
@@ -159,7 +159,7 @@ const OrdersScreen = () => {
                     </View>
                     <TouchableOpacity style={styles.actionBtn}>
                         <Text style={styles.actionBtnText}>View Details</Text>
-                        <Feather name="chevron-right" size={16} color="#166534" />
+                        <Feather name="chevron-right" size={16} color="#004C46" />
                     </TouchableOpacity>
                 </View>
 
@@ -171,12 +171,12 @@ const OrdersScreen = () => {
 
     if (loading) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-                <StatusBar barStyle="light-content" backgroundColor="#166534" />
+            <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+                <StatusBar barStyle="light-content" backgroundColor="#004C46" />
 
                 {/* Header - Fixed at top */}
                 <View style={{
-                    backgroundColor: '#166534',
+                    backgroundColor: '#004C46',
                     paddingBottom: 16,
                     paddingTop: 10
                 }}>
@@ -198,7 +198,7 @@ const OrdersScreen = () => {
                             </View>
                             {/* Profile Icon */}
                             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-                                <Feather name="user" size={20} color="#166534" />
+                                <Feather name="user" size={20} color="#004C46" />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -206,7 +206,7 @@ const OrdersScreen = () => {
 
                 <View style={{ flex: 1, backgroundColor: 'white' }}>
                     <View style={styles.centerContainer}>
-                        <ActivityIndicator size="large" color="#166534" />
+                        <ActivityIndicator size="large" color="#004C46" />
                         <Text style={styles.loadingText}>Loading orders...</Text>
                     </View>
                 </View>
@@ -215,17 +215,17 @@ const OrdersScreen = () => {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-            <StatusBar barStyle="light-content" backgroundColor="#166534" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+            <StatusBar barStyle="light-content" backgroundColor="#004C46" />
 
             {/* Header - Fixed at top */}
             <View style={{
-                backgroundColor: '#166534',
+                backgroundColor: '#004C46',
                 paddingBottom: 16,
                 paddingTop: 10
             }}>
                 {/* Top Row: Brand, Location, Timer, Profile */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 }}>
                     <View>
                         <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
                         <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
@@ -242,7 +242,7 @@ const OrdersScreen = () => {
                         </View>
                         {/* Profile Icon */}
                         <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-                            <Feather name="user" size={20} color="#166534" />
+                            <Feather name="user" size={20} color="#004C46" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -308,8 +308,8 @@ const OrdersScreen = () => {
                             <RefreshControl
                                 refreshing={refreshing}
                                 onRefresh={onRefresh}
-                                colors={['#166534']}
-                                tintColor="#166534"
+                                colors={['#004C46']}
+                                tintColor="#004C46"
                             />
                         }
                     />
@@ -358,8 +358,8 @@ const styles = StyleSheet.create({
         borderColor: '#e5e7eb',
     },
     activeTab: {
-        backgroundColor: '#166534',
-        borderColor: '#166534',
+        backgroundColor: '#004C46',
+        borderColor: '#004C46',
     },
     tabText: {
         fontSize: 13,
@@ -466,14 +466,14 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#166534',
+        borderColor: '#004C46',
         backgroundColor: 'white',
         gap: 4,
     },
     actionBtnText: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#166534',
+        color: '#004C46',
     },
     centerContainer: {
         flex: 1,
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
         marginTop: 20,
         paddingHorizontal: 24,
         paddingVertical: 12,
-        backgroundColor: '#166534',
+        backgroundColor: '#004C46',
         borderRadius: 8,
     },
     retryBtnText: {

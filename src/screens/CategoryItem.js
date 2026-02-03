@@ -19,7 +19,7 @@ const CategoryItem = ({ item }) => {
         <View className={`
           bg-white rounded-xl p-2 mb-2 
           ${borderSize} 
-          ${isSelected ? 'border-green-500' : 'border-gray-100'}
+          ${isSelected ? 'border-[#004C46]' : 'border-gray-100'}
           shadow-sm
         `}>
           <View className="w-full aspect-square rounded-lg overflow-hidden">
@@ -32,7 +32,7 @@ const CategoryItem = ({ item }) => {
         </View>
         <Text className={`
           ${textSize} font-semibold text-center
-          ${isSelected ? 'text-green-500' : 'text-gray-800'}
+          ${isSelected ? 'text-[#004C46]' : 'text-gray-800'}
         `}>
           {item.name}
         </Text>

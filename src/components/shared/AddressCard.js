@@ -6,14 +6,13 @@ export default function AddressCard({ address, isSelected, onSelect, onEdit, onD
   return (
     <TouchableOpacity
       onPress={() => onSelect?.(address.id)}
-      className={`p-4 mb-3 rounded-2xl border ${
-        isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'
-      }`}
+      className={`p-4 mb-3 rounded-2xl border ${isSelected ? 'border-[#004C46] bg-[#e6f4ea]' : 'border-gray-200 bg-white'
+        }`}
       activeOpacity={0.9}
     >
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-base font-semibold text-gray-800">{address.name}</Text>
-        {isSelected && <Ionicons name="checkmark-circle" size={20} color="#10B981" />}
+        {isSelected && <Ionicons name="checkmark-circle" size={20} color="#004C46" />}
       </View>
 
       <Text className="text-sm text-gray-600 mb-2">{address.details}</Text>

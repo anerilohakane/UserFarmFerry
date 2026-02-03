@@ -48,11 +48,11 @@ const FarmFerryFAQ = () => {
   const handleFormSubmit = () => {
     // Handle form submission logic here
     console.log('Support form submitted:', supportForm);
-    
+
     // Close the support modal and show success modal
     setIsSupportModalVisible(false);
     setIsSuccessModalVisible(true);
-    
+
     // Reset form
     setSupportForm({
       name: '',
@@ -127,15 +127,15 @@ const FarmFerryFAQ = () => {
   };
 
   const filteredFAQs = useMemo(() => {
-    return faqData.items.filter(item => 
+    return faqData.items.filter(item =>
       activeCategory === 'all' || item.category === activeCategory
     );
   }, [activeCategory]);
 
   const ChevronIcon = ({ isOpen }) => (
-    <ChevronDown 
-      size={20} 
-      color="#16a34a" 
+    <ChevronDown
+      size={20}
+      color="#004C46"
       style={{ transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }}
     />
   );
@@ -155,36 +155,32 @@ const FarmFerryFAQ = () => {
           </View>
 
           {/* Category Filter */}
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             className="mb-5"
             contentContainerStyle={{ paddingRight: 20 }}
           >
             <View className="flex-row gap-2">
               <TouchableOpacity
-                className={`px-4 py-2 rounded-lg ${
-                  activeCategory === 'all' ? 'bg-green-600' : 'bg-gray-100'
-                }`}
+                className={`px-4 py-2 rounded-lg ${activeCategory === 'all' ? 'bg-[#004C46]' : 'bg-gray-100'
+                  }`}
                 onPress={() => setActiveCategory('all')}
               >
-                <Text className={`text-sm font-medium ${
-                  activeCategory === 'all' ? 'text-white' : 'text-gray-900'
-                }`}>
+                <Text className={`text-sm font-medium ${activeCategory === 'all' ? 'text-white' : 'text-gray-900'
+                  }`}>
                   All FAQs
                 </Text>
               </TouchableOpacity>
               {faqData.categories.map(category => (
                 <TouchableOpacity
                   key={category.id}
-                  className={`px-4 py-2 rounded-lg ${
-                    activeCategory === category.id ? 'bg-green-600' : 'bg-gray-100'
-                  }`}
+                  className={`px-4 py-2 rounded-lg ${activeCategory === category.id ? 'bg-[#004C46]' : 'bg-gray-100'
+                    }`}
                   onPress={() => setActiveCategory(category.id)}
                 >
-                  <Text className={`text-sm font-medium ${
-                    activeCategory === category.id ? 'text-white' : 'text-gray-900'
-                  }`}>
+                  <Text className={`text-sm font-medium ${activeCategory === category.id ? 'text-white' : 'text-gray-900'
+                    }`}>
                     {category.name}
                   </Text>
                 </TouchableOpacity>
@@ -234,8 +230,8 @@ const FarmFerryFAQ = () => {
               Our support team is here to help you
             </Text>
             <View className="w-full gap-3">
-              <TouchableOpacity 
-                className="bg-green-600 py-3 px-5 rounded-lg items-center"
+              <TouchableOpacity
+                className="bg-[#004C46] py-3 px-5 rounded-lg items-center"
                 onPress={handleSupportPress}
               >
                 <Text className="text-base text-white font-medium">
@@ -259,7 +255,7 @@ const FarmFerryFAQ = () => {
         visible={isSupportModalVisible}
         onRequestClose={handleCloseModal}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           className="flex-1"
         >
@@ -268,12 +264,12 @@ const FarmFerryFAQ = () => {
               {/* Modal Header */}
               <View className="flex-row justify-between items-center p-6 border-b border-gray-200">
                 <View className="flex-row items-center">
-                  <MessageCircle size={24} color="#16a34a" />
+                  <MessageCircle size={24} color="#004C46" />
                   <Text className="text-xl font-bold text-gray-900 ml-3">
                     Contact Support
                   </Text>
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={handleCloseModal}
                   className="p-1"
                 >
@@ -336,7 +332,7 @@ const FarmFerryFAQ = () => {
 
               {/* Modal Footer */}
               <View className="flex-row gap-3 p-6 border-t border-gray-200">
-                <TouchableOpacity 
+                <TouchableOpacity
                   className="flex-1 py-3 rounded-lg border border-gray-300"
                   onPress={handleCloseModal}
                 >
@@ -344,8 +340,8 @@ const FarmFerryFAQ = () => {
                     Cancel
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  className="flex-1 py-3 rounded-lg bg-green-600"
+                <TouchableOpacity
+                  className="flex-1 py-3 rounded-lg bg-[#004C46]"
                   onPress={handleFormSubmit}
                 >
                   <Text className="text-center text-base font-medium text-white">
@@ -369,25 +365,25 @@ const FarmFerryFAQ = () => {
           <View className="bg-white rounded-2xl mx-5 w-11/12 max-w-sm p-6 items-center">
             {/* Success Icon */}
             <View className="bg-green-50 rounded-full p-4 mb-4">
-              <CheckCircle size={48} color="#16a34a" />
+              <CheckCircle size={48} color="#004C46" />
             </View>
-            
+
             {/* Success Message */}
             <Text className="text-xl font-bold text-gray-900 text-center mb-3">
               Message Sent!
             </Text>
-            
+
             <Text className="text-base text-gray-600 text-center mb-2">
               Thank you for contacting us.
             </Text>
-            
+
             <Text className="text-base text-gray-600 text-center mb-6">
               Our support team will get back to you within 24 hours.
             </Text>
 
             {/* Close Button */}
-            <TouchableOpacity 
-              className="w-full py-3 rounded-lg bg-green-600"
+            <TouchableOpacity
+              className="w-full py-3 rounded-lg bg-[#004C46]"
               onPress={handleCloseSuccessModal}
             >
               <Text className="text-center text-base font-medium text-white">

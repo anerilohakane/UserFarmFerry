@@ -307,7 +307,7 @@ const ProductDetailsScreen = ({ route, navigation }) => {
           style={{ overflow: 'hidden', height: 44, opacity: !((typeof product.stockQuantity === 'number' ? product.stockQuantity : 0) > 0 || product.inStock) ? 0.6 : 1 }}
         >
           <LinearGradient
-            colors={["#10b981", "#059669"]}
+            colors={["#004C46", "#003d38"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={{

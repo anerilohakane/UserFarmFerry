@@ -88,12 +88,12 @@ export default function WishlistScreen() {
 
   const renderHeader = () => (
     <View style={{
-      backgroundColor: '#166534',
+      backgroundColor: '#004C46',
       paddingBottom: 16,
       paddingTop: 10
     }}>
       {/* Top Row: Brand, Location, Timer, Profile */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 }}>
         <View>
           <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
           <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
@@ -110,7 +110,7 @@ export default function WishlistScreen() {
           </View>
           {/* Profile Icon */}
           <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-            <Feather name="user" size={20} color="#166534" />
+            <Feather name="user" size={20} color="#004C46" />
           </TouchableOpacity>
         </View>
       </View>
@@ -203,46 +203,34 @@ export default function WishlistScreen() {
   );
 
   // Main Render
+  // Main Render
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#166534" />
-
-        {/* Header - Fixed at top */}
-        <View style={{
-          backgroundColor: '#166534',
-          paddingBottom: 16,
-          paddingTop: 10
-        }}>
-          {/* Top Row: Brand, Location, Timer, Profile */}
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="light-content" backgroundColor="#004C46" />
+        <View style={{ backgroundColor: '#004C46', paddingBottom: 16, paddingTop: 10 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
             <View>
               <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                 <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
                 <Feather name="chevron-down" size={16} color="white" />
-              </TouchableOpacity>
+              </View>
             </View>
-
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {/* 5 mins Badge */}
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                 <Feather name="clock" size={12} color="black" />
                 <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
               </View>
-              {/* Profile Icon */}
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-                <Feather name="user" size={20} color="#166534" />
+                <Feather name="user" size={20} color="#004C46" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
-
-        <View style={{ flex: 1, backgroundColor: 'white' }}>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#166534" />
-            <Text style={{ marginTop: 12, fontSize: 14, color: '#6b7280' }}>Loading wishlist...</Text>
-          </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'white' }}>
+          <ActivityIndicator size="large" color="#004C46" />
+          <Text style={{ marginTop: 12, fontSize: 14, color: '#6b7280' }}>Loading wishlist...</Text>
         </View>
       </SafeAreaView>
     );
@@ -250,67 +238,54 @@ export default function WishlistScreen() {
 
   if (error) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#166534" />
-
-        {/* Header - Fixed at top */}
-        <View style={{
-          backgroundColor: '#166534',
-          paddingBottom: 16,
-          paddingTop: 10
-        }}>
-          {/* Top Row: Brand, Location, Timer, Profile */}
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="light-content" backgroundColor="#004C46" />
+        <View style={{ backgroundColor: '#004C46', paddingBottom: 16, paddingTop: 10 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
             <View>
               <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
-              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                 <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
                 <Feather name="chevron-down" size={16} color="white" />
-              </TouchableOpacity>
+              </View>
             </View>
-
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {/* 5 mins Badge */}
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                 <Feather name="clock" size={12} color="black" />
                 <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
               </View>
-              {/* Profile Icon */}
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-                <Feather name="user" size={20} color="#166534" />
+                <Feather name="user" size={20} color="#004C46" />
               </TouchableOpacity>
             </View>
           </View>
         </View>
-
-        <View style={{ flex: 1, backgroundColor: 'white' }}>
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-            <Feather name="alert-circle" size={48} color="#dc2626" />
-            <Text style={{ marginTop: 16, fontSize: 15, color: '#6b7280', textAlign: 'center' }}>{error}</Text>
-            <TouchableOpacity
-              style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#166534', borderRadius: 8 }}
-              onPress={fetchWishlist}
-            >
-              <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>Retry</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32, backgroundColor: 'white' }}>
+          <Feather name="alert-circle" size={48} color="#dc2626" />
+          <Text style={{ marginTop: 16, fontSize: 15, color: '#6b7280', textAlign: 'center' }}>{error}</Text>
+          <TouchableOpacity
+            style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#004C46', borderRadius: 8 }}
+            onPress={fetchWishlist}
+          >
+            <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>Retry</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'white' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#166534" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#004C46" />
 
       {/* Header - Fixed at top */}
       <View style={{
-        backgroundColor: '#166534',
+        backgroundColor: '#004C46',
         paddingBottom: 16,
         paddingTop: 10
       }}>
         {/* Top Row: Brand, Location, Timer, Profile */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 }}>
           <View>
             <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
@@ -327,7 +302,7 @@ export default function WishlistScreen() {
             </View>
             {/* Profile Icon */}
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
-              <Feather name="user" size={20} color="#166534" />
+              <Feather name="user" size={20} color="#004C46" />
             </TouchableOpacity>
           </View>
         </View>

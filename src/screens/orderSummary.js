@@ -331,12 +331,31 @@ const OrderSummaryScreen = ({ route }) => {
     try {
       let items = [];
 
+      // Fetch cart items
       if (routeItems && Array.isArray(routeItems)) {
+        console.log("Using route items:", routeItems.length);
         items = routeItems;
       } else {
-        const cartRes = await cartAPI.getCart();
-        const cartData = cartRes?.data?.data?.cart || {};
-        items = Array.isArray(cartData.items) ? cartData.items : [];
+        try {
+          console.log("Fetching cart from API...");
+          const cartRes = await cartAPI.getCart();
+          const cartData = cartRes?.data?.data?.cart || {};
+          items = Array.isArray(cartData.items) ? cartData.items : [];
+          console.log("Cart fetched successfully:", items.length, "items");
+        } catch (cartError) {
+          console.error("Cart fetch error:", cartError);
+          // If cart fetch fails but we have route items, continue
+          if (routeItems && Array.isArray(routeItems)) {
+            items = routeItems;
+          } else {
+            // No items available, show error but don't crash
+            Alert.alert(
+              "Cart Error",
+              "Unable to load cart. Please try again or go back to the cart screen."
+            );
+            items = [];
+          }
+        }
       }
 
       // Use route parameters if available (from CartScreen), otherwise calculate
@@ -396,14 +415,52 @@ const OrderSummaryScreen = ({ route }) => {
         updateCartItems(items);
       }
 
-      const response = await customerAPI.getProfile();
-      const addresses = response?.data?.data?.customer?.addresses;
-      setAddresses(Array.isArray(addresses) ? addresses : []);
-      if (Array.isArray(addresses) && addresses.length > 0) {
-        setSelectedAddress(addresses[0]._id);
+      // Fetch addresses - with better error handling
+      try {
+        console.log("Fetching user profile/addresses...");
+        const response = await customerAPI.getProfile();
+        const addresses = response?.data?.data?.customer?.addresses;
+        console.log("Addresses fetched:", addresses?.length || 0);
+        setAddresses(Array.isArray(addresses) ? addresses : []);
+        if (Array.isArray(addresses) && addresses.length > 0) {
+          setSelectedAddress(addresses[0]._id);
+        }
+      } catch (addressError) {
+        console.error("Address fetch error:", addressError);
+        console.error("Address error details:", addressError.response?.data);
+
+        // Don't crash if addresses fail to load
+        // User might not have any addresses yet, or profile might not be set up
+        setAddresses([]);
+
+        // Show a helpful message if it's a 404
+        if (addressError.response?.status === 404) {
+          console.log("No customer profile found - user may need to add addresses");
+        } else {
+          console.error("Unexpected error fetching addresses:", addressError.message);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch cart or addresses:", error);
+      console.error("Error details:", error.response?.data || error.message);
+
+      // Still allow the screen to load with empty data if there's an error
+      setCart({
+        items: [],
+        subtotal: 0,
+        gst: 0,
+        platformFee: 2,
+        shipping: 0,
+        total: 0,
+        savings: 0,
+        handlingFee: 0,
+      });
+      setAddresses([]);
+
+      Alert.alert(
+        "Loading Error",
+        "Unable to load order details. Please check your connection and try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -516,7 +573,53 @@ const OrderSummaryScreen = ({ route }) => {
       return base;
     });
 
+    // Extract supplier from the first item (assuming single supplier per order for now)
+    let supplierId = null;
+    if (items.length > 0) {
+      const firstItem = cart.items[0];
+
+      // Try to get supplier from existing product data
+      if (firstItem.product) {
+        if (typeof firstItem.product === 'object') {
+          const supp = firstItem.product.supplier || firstItem.product.supplierId;
+          if (supp) {
+            supplierId = typeof supp === 'object' ? supp._id : supp;
+          }
+        }
+      }
+
+      // FALLBACK: If supplierId is still null (e.g. stripped by cart API), fetch product details
+      if (!supplierId) {
+        try {
+          console.log("Fetching product details to find supplier...");
+          const productId = firstItem.product._id || firstItem.product.id || firstItem.product; // Handle object or ID
+
+          // Use productsAPI (which calls /supplier/products/[id])
+          // We need to import productsAPI if not available, but it is imported at top
+          const productRes = await import('../services/api').then(m => m.productsAPI.getProductDetails(productId));
+
+          const fullProduct = productRes?.data?.data || productRes?.data; // Adjust based on API response structure
+          // console.log("Fetched full product:", fullProduct); // Debug
+
+          if (fullProduct) {
+            const supp = fullProduct.supplier || fullProduct.supplierId;
+            if (supp) {
+              supplierId = typeof supp === 'object' ? supp._id : supp;
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch product details for supplier extraction:", err);
+        }
+      }
+    }
+
+    if (!supplierId) {
+      console.warn("No supplier ID found in cart items. Order creation might fail if backend requires it.");
+      // Fallback or let backend handle the validation error
+    }
+
     const orderData = {
+      supplier: supplierId,
       deliveryAddress,
       paymentMethod: paymentMethodValue,
       items,
@@ -1700,7 +1803,7 @@ const OrderSummaryScreen = ({ route }) => {
           style={{ borderRadius: 12, overflow: "hidden" }}
         >
           <LinearGradient
-            colors={["#10b981", "#059669"]}
+            colors={["#004C46", "#003d38"]}
             className="py-4 flex-row items-center justify-center rounded-xl"
           >
             <CheckCircle

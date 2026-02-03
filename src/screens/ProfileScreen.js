@@ -53,15 +53,41 @@ const ProfileScreen = () => {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f0fdf4" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#004C46" />
 
-      {/* 1. Gradient Header with User Info */}
-      <LinearGradient
-        colors={['#dcfce7', '#f0fdf4', 'white']} // Green gradient fading to white
-        start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
-        style={{ paddingBottom: 20, paddingTop: 60, paddingHorizontal: 20 }}
-      >
+      {/* Standardized Header */}
+      <View style={{
+        backgroundColor: '#004C46',
+        paddingBottom: 16,
+        paddingTop: 10
+      }}>
+        {/* Top Row: Brand, Location, Timer, Profile */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16 }}>
+          <View>
+            <Text style={{ color: 'white', fontWeight: '800', fontSize: 20, letterSpacing: -0.5 }}>FarmFerry</Text>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <Text style={{ color: 'white', fontSize: 13, fontWeight: '600' }}>Deliver to Selected Location</Text>
+              <Feather name="chevron-down" size={16} color="white" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {/* 5 mins Badge */}
+            <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+              <Feather name="clock" size={12} color="black" />
+              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+            </View>
+            {/* Profile Icon */}
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
+              <Feather name="user" size={20} color="#004C46" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* User Info Section (Below Header) */}
+      <View style={{ padding: 20, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {/* Profile Pic Placeholder */}
           <View style={{
@@ -71,7 +97,7 @@ const ProfileScreen = () => {
             justifyContent: 'center', alignItems: 'center',
             borderWidth: 2, borderColor: '#dcfce7'
           }}>
-            <Feather name="user" size={32} color="#16a34a" />
+            <Feather name="user" size={32} color="#004C46" />
           </View>
 
           {/* User Details */}
@@ -84,9 +110,12 @@ const ProfileScreen = () => {
             </Text>
           </View>
         </View>
-      </LinearGradient>
+      </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: 'white' }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+      >
 
         {/* 2. Menu Items */}
         <View style={{ marginTop: 10 }}>
@@ -150,12 +179,12 @@ const ProfileScreen = () => {
             backgroundColor: 'white'
           }}
         >
-          <Feather name="log-out" size={18} color="#16a34a" />
-          <Text style={{ marginLeft: 8, color: '#16a34a', fontWeight: '700', fontSize: 16 }}>Sign Out</Text>
+          <Feather name="log-out" size={18} color="#004C46" />
+          <Text style={{ marginLeft: 8, color: '#004C46', fontWeight: '700', fontSize: 16 }}>Sign Out</Text>
         </TouchableOpacity>
 
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
