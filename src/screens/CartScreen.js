@@ -5,43 +5,41 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { cartAPI } from '../services/api';
+import { useAppContext } from '../context/AppContext';
 
 const CartScreen = () => {
   const navigation = useNavigation();
+  const { cartItems, removeFromCart, updateCartItemQuantity, updateCartItems } = useAppContext();
 
-  // State
-  const [cartData, setCartData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Local UI state
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [updatingItems, setUpdatingItems] = useState({});
 
-  useEffect(() => {
-    fetchCart();
-  }, []);
-
-  // Auto-refresh cart when screen comes into focus
+  // Refresh context on focus
   useFocusEffect(
     React.useCallback(() => {
-      fetchCart();
+      fetchCartData();
     }, [])
   );
 
-  const fetchCart = async () => {
+  const fetchCartData = async () => {
     try {
+      // setLoading(true); // Optional: depends if we want full spinner
       setError(null);
       const response = await cartAPI.getCart();
-      console.log('Cart API Response:', response.data);
-
       if (response.data.success) {
-        // Backend returns { success: true, data: { userId, items, subtotal } }
-        setCartData(response.data.data);
-      } else {
-        setError('Failed to fetch cart');
+        const fetchedItems = response.data.data?.cart?.items || response.data.data?.items || [];
+        console.log('🛒 Frontend Cart Items Debug:', JSON.stringify(fetchedItems.map(i => ({
+          name: i.product?.name,
+          price: i.product?.price,
+          discounted: i.product?.discountedPrice
+        })), null, 2));
+        updateCartItems(fetchedItems);
       }
     } catch (err) {
       console.error('Error fetching cart:', err);
-      setError(err.message || 'Failed to load cart. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -50,10 +48,11 @@ const CartScreen = () => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchCart();
+    fetchCartData();
   };
 
   const handleUpdateQuantity = async (productId, newQuantity) => {
+    // If quantity is 0, remove it
     if (newQuantity < 1) {
       handleRemoveItem(productId);
       return;
@@ -61,10 +60,8 @@ const CartScreen = () => {
 
     setUpdatingItems(prev => ({ ...prev, [productId]: true }));
     try {
-      await cartAPI.updateCartItem(productId, newQuantity);
-      await fetchCart();
+      await updateCartItemQuantity(productId, newQuantity);
     } catch (err) {
-      console.error('Error updating quantity:', err);
       Alert.alert('Error', 'Failed to update quantity');
     } finally {
       setUpdatingItems(prev => ({ ...prev, [productId]: false }));
@@ -74,10 +71,8 @@ const CartScreen = () => {
   const handleRemoveItem = async (productId) => {
     setUpdatingItems(prev => ({ ...prev, [productId]: true }));
     try {
-      await cartAPI.removeCartItem(productId);
-      await fetchCart();
+      await removeFromCart(productId);
     } catch (err) {
-      console.error('Error removing item:', err);
       Alert.alert('Error', 'Failed to remove item');
     } finally {
       setUpdatingItems(prev => ({ ...prev, [productId]: false }));
@@ -85,20 +80,17 @@ const CartScreen = () => {
   };
 
   const calculateTotals = () => {
-    if (!cartData || !cartData.items) {
-      return { orderTotal: 0, savings: 0, grandTotal: 0 };
-    }
-
-    // Backend returns subtotal directly
-    const orderTotal = cartData.subtotal || 0;
-    const savings = 0; // Can add discount logic later if needed
+    // Calculate total from cartItems directly
+    const orderTotal = cartItems.reduce((sum, item) => {
+      const price = item.product?.discountedPrice ?? item.product?.price ?? 0;
+      return sum + (price * item.quantity);
+    }, 0);
+    const savings = 0; // Can implement discount logic later
     const grandTotal = orderTotal;
-
     return { orderTotal, savings, grandTotal };
   };
 
   const { orderTotal, savings, grandTotal } = calculateTotals();
-  const cartItems = cartData?.items || [];
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
 
@@ -118,7 +110,7 @@ const CartScreen = () => {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                 <Feather name="clock" size={12} color="black" />
-                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
                 <Feather name="user" size={20} color="#004C46" />
@@ -150,7 +142,7 @@ const CartScreen = () => {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                 <Feather name="clock" size={12} color="black" />
-                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
                 <Feather name="user" size={20} color="#004C46" />
@@ -163,7 +155,7 @@ const CartScreen = () => {
           <Text style={{ marginTop: 16, fontSize: 15, color: '#6b7280', textAlign: 'center' }}>{error}</Text>
           <TouchableOpacity
             style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#004C46', borderRadius: 8 }}
-            onPress={fetchCart}
+            onPress={fetchCartData}
           >
             <Text style={{ color: 'white', fontSize: 14, fontWeight: '600' }}>Retry</Text>
           </TouchableOpacity>
@@ -172,7 +164,7 @@ const CartScreen = () => {
     );
   }
 
-  if (!cartData || cartItems.length === 0) {
+  if (!loading && cartItems.length === 0) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="light-content" backgroundColor="#004C46" />
@@ -188,7 +180,7 @@ const CartScreen = () => {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                 <Feather name="clock" size={12} color="black" />
-                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
                 <Feather name="user" size={20} color="#004C46" />
@@ -235,7 +227,7 @@ const CartScreen = () => {
             {/* 5 mins Badge */}
             <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
               <Feather name="clock" size={12} color="black" />
-              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
             </View>
             {/* Profile Icon */}
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
@@ -302,7 +294,7 @@ const CartScreen = () => {
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
                   <Text style={{ fontSize: 16, fontWeight: '700', color: '#1f2937' }}>
-                    ₹{item.product?.price || 0}
+                    ₹{item.product?.discountedPrice ?? item.product?.price ?? 0}
                   </Text>
 
                   {/* Stepper */}

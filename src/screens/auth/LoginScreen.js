@@ -1,74 +1,66 @@
-import React from 'react';
-import { View, ScrollView, Image, SafeAreaView, Text, KeyboardAvoidingView, Platform, StyleSheet, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Image, Text, KeyboardAvoidingView, Platform, StyleSheet, StatusBar, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import LoginForm from '../../components/forms/LoginForm';
 import { SCREEN_NAMES } from '../../types';
 
 const LoginScreen = () => {
   const navigation = useNavigation();
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   const handleLoginSuccess = () => {
-    // AuthContext will set isAuthenticated=true and AppNavigator will
-    // automatically swap AuthStack → AppStack.
     console.log('Login success');
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Background - Clean & Subtle */}
-      {/* Using a very subtle top-to-bottom gradient for a premium feel */}
-      <LinearGradient
-        colors={['#f0fdf4', '#ffffff', '#ffffff']}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 0.4 }}
-      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <View style={styles.innerContainer}>
+          {/* Top Section - Image Background */}
+          {/* Shrink image when keyboard is open to make space */}
+          <View style={[styles.topImageContainer, { height: isKeyboardVisible ? '30%' : '60%' }]}>
+            <Image
+              source={require('../../../assets/images/login_bg.jpg')}
+              style={styles.backgroundImage}
+              resizeMode="cover"
+            />
+          </View>
 
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.contentContainer}>
+          {/* Bottom Section - Form Area */}
+          <View style={styles.formSection}>
+            <LoginForm onSuccess={handleLoginSuccess} />
 
-              {/* Logo Section - refined */}
-              <View style={styles.logoContainer}>
-                <View style={styles.logoWrapper}>
-                  <Image
-                    source={require('../../../assets/images/Icon2.jpeg')}
-                    style={styles.logo}
-                    resizeMode="cover"
-                  />
-                </View>
-                <Text style={styles.brandName}>
-                  FARM FERRY
-                </Text>
-                <Text style={styles.tagline}>
-                  Freshness Delivered to Your Doorstep
-                </Text>
-              </View>
-
-              {/* Login Form Component */}
-              <View style={styles.formContainer}>
-                <LoginForm
-                  onSuccess={handleLoginSuccess}
-                // onForgotPassword & onRegister are handled internally or not needed if OTP flow
-                />
-              </View>
-
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+            <Text style={styles.footerText}>
+              By continuing, you agree to our Terms & Privacy Policy
+            </Text>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -76,63 +68,33 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
   },
-  safeArea: {
+  innerContainer: {
     flex: 1,
   },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingBottom: 20,
-  },
-  contentContainer: {
-    padding: 24,
-    alignItems: 'center',
+  topImageContainer: {
     width: '100%',
-    maxWidth: 500, // Limit width on tablets/web
-    alignSelf: 'center',
+    overflow: 'hidden',
+    // Height is controlled inline
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoWrapper: {
-    marginBottom: 16,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    borderRadius: 60,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: '#ffffff',
-  },
-  brandName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#166534', // Dark green
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 14,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  formContainer: {
+  backgroundImage: {
     width: '100%',
+    height: '100%',
+  },
+  formSection: {
+    flex: 1, // Take remaining space
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    justifyContent: 'flex-start',
+  },
+  footerText: {
+    textAlign: 'center',
+    color: '#94a3b8',
+    fontSize: 11,
+    marginTop: 20,
+    marginBottom: 10,
   },
 });
 

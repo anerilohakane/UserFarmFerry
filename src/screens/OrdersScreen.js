@@ -12,9 +12,10 @@ import {
     Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { ordersAPI } from '../services/api';
+import eventBus from '../utils/eventBus';
 
 const OrdersScreen = () => {
     const navigation = useNavigation();
@@ -24,19 +25,66 @@ const OrdersScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState(null);
 
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchOrders();
+        }, [])
+    );
+
     useEffect(() => {
-        fetchOrders();
+        const handleRefresh = () => {
+            console.log('⚡ OrdersScreen: ORDER_REFRESH event received');
+            fetchOrders();
+        };
+
+        eventBus.on('ORDER_REFRESH', handleRefresh);
+
+        return () => {
+            eventBus.off('ORDER_REFRESH', handleRefresh);
+        };
     }, []);
 
     const fetchOrders = async () => {
+        console.log('🔄 OrdersScreen: fetchOrders called');
         try {
+            // Don't show full loading screen if we already have data, just silent update or top-bar loading
+            if (orders.length === 0) setLoading(true);
+
             setError(null);
-            const response = await ordersAPI.getMyOrders();
-            console.log('Orders API Response:', response.data);
+
+            // Add timestamp to prevent caching
+            const timestamp = new Date().getTime();
+            // Explicitly request descending order to support both old and new backend defaults
+            const response = await ordersAPI.getMyOrders({ t: timestamp, sort: 'createdAt', order: 'desc' });
+            console.log('Orders API Response Length:', response.data?.data?.orders?.length || '0');
 
             if (response.data.success) {
-                const ordersData = response.data.data || [];
-                setOrders(ordersData);
+                // Extract orders array correctly (handle both paginated and flat structures)
+                let ordersData = response.data.data?.orders || response.data.data || [];
+
+                console.log('📊 Raw Orders Count:', ordersData.length);
+                if (ordersData.length > 0) {
+                    console.log('📝 First Order Sample:', JSON.stringify(ordersData[0], null, 2));
+                    console.log('🕒 First 3 Order Dates (Before Sort):', ordersData.slice(0, 3).map(o => o.createdAt));
+                }
+
+                if (Array.isArray(ordersData)) {
+                    // Sort by date descending (newest first)
+                    ordersData.sort((a, b) => {
+                        const dateA = new Date(a.createdAt);
+                        const dateB = new Date(b.createdAt);
+                        return dateB - dateA;
+                    });
+
+                    if (ordersData.length > 0) {
+                        console.log('🕒 First 3 Order Dates (After Sort):', ordersData.slice(0, 3).map(o => o.createdAt));
+                    }
+
+                    setOrders(ordersData);
+                } else {
+                    console.error('Orders data is not an array:', ordersData);
+                    setOrders([]);
+                }
             } else {
                 setError('Failed to fetch orders');
             }
@@ -157,7 +205,10 @@ const OrdersScreen = () => {
                         <Text style={styles.totalLabel}>Total Amount</Text>
                         <Text style={styles.totalAmount}>₹{item.totalAmount?.toFixed(2) || '0.00'}</Text>
                     </View>
-                    <TouchableOpacity style={styles.actionBtn}>
+                    <TouchableOpacity
+                        style={styles.actionBtn}
+                        onPress={() => navigation.navigate('OrderDetails', { orderId: item._id, order: item })}
+                    >
                         <Text style={styles.actionBtnText}>View Details</Text>
                         <Feather name="chevron-right" size={16} color="#004C46" />
                     </TouchableOpacity>
@@ -194,7 +245,7 @@ const OrdersScreen = () => {
                             {/* 5 mins Badge */}
                             <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                                 <Feather name="clock" size={12} color="black" />
-                                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+                                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
                             </View>
                             {/* Profile Icon */}
                             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
@@ -238,7 +289,7 @@ const OrdersScreen = () => {
                         {/* 5 mins Badge */}
                         <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                             <Feather name="clock" size={12} color="black" />
-                            <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+                            <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
                         </View>
                         {/* Profile Icon */}
                         <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>

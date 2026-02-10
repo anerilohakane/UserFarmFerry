@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { CONFIG } from '../constants/config';
+import eventBus from '../utils/eventBus';
 
 // Create axios instance
 const api = axios.create({
@@ -118,8 +119,8 @@ api.interceptors.response.use(
           CONFIG.STORAGE_KEYS.USER_DATA,
         ]);
 
-        // You can emit an event here to notify the app to redirect to login
-        // EventBus.emit('AUTH_EXPIRED');
+        // Notify app to redirect to login
+        eventBus.emit('AUTH_EXPIRED');
       }
     }
 
@@ -229,11 +230,16 @@ export const cartAPI = {
 
       console.log('📦 Cart API - Adding to cart:', { userId, productId, quantity });
 
-      return api.post(CONFIG.ENDPOINTS.CART.ADD, {
-        userId,
-        productId,
+      // Ensure IDs are strings
+      const payload = {
+        userId: String(userId),
+        productId: String(productId),
         quantity: Number(quantity)
-      });
+      };
+
+      console.log('📦 Cart API - Payload:', JSON.stringify(payload));
+
+      return api.post(CONFIG.ENDPOINTS.CART.ADD, payload);
     } catch (error) {
       console.error('Cart API - addToCart error:', error);
       throw error;
@@ -380,10 +386,14 @@ export const wishlistAPI = {
       const userId = user?._id;
 
       if (!userId) {
+        console.error('Wishlist API - User ID missing');
         throw new Error('User ID not found. Please login again.');
       }
 
-      return api.post('/wishlist', { productId, userId });
+      console.log('Wishlist API - Adding:', { productId, userId });
+      const response = await api.post('/wishlist', { productId, userId });
+      console.log('Wishlist API - Add Response:', response.data);
+      return response;
     } catch (error) {
       console.error('Wishlist API - addToWishlist error:', error);
       throw error;
@@ -399,7 +409,12 @@ export const wishlistAPI = {
         throw new Error('User ID not found. Please login again.');
       }
 
-      return api.delete(`/wishlist/${productId}?userId=${userId}`);
+      console.log('Wishlist API - Removing:', { productId, userId });
+      const response = await api.delete('/wishlist', {
+        data: { userId, productId }
+      });
+      console.log('Wishlist API - Remove Response:', response.data);
+      return response;
     } catch (error) {
       console.error('Wishlist API - removeFromWishlist error:', error);
       throw error;

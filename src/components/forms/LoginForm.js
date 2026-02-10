@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet, Animated, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet, Animated, Keyboard, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '../../context/AuthContext';
 import { Phone, ArrowRight, RefreshCw, X } from 'lucide-react-native';
@@ -38,9 +38,14 @@ const LoginForm = ({ onSuccess }) => {
   }, []);
 
   const validatePhone = (text) => {
-    const cleanText = text.replace(/\D/g, '');
-    setPhone(cleanText);
-    if (cleanText.length > 0 && cleanText.length < 10) {
+    // Only allow numbers
+    const numericText = text.replace(/[^0-9]/g, '');
+    setPhone(numericText);
+
+    if (numericText.length === 10) {
+      setError('');
+      Keyboard.dismiss(); // Auto-dismiss keyboard when 10 digits are entered
+    } else if (numericText.length > 0 && numericText.length < 10) {
       setError('Phone number must be 10 digits');
     } else {
       setError('');
@@ -92,6 +97,18 @@ const LoginForm = ({ onSuccess }) => {
     }
   };
 
+  const renderOtpBlocks = () => {
+    const blocks = [];
+    for (let i = 0; i < 6; i++) {
+      blocks.push(
+        <View key={i} style={[styles.otpBlock, otp.length === i && styles.otpBlockActive, otp.length > i && styles.otpBlockFilled]}>
+          <Text style={styles.otpText}>{otp[i] || ''}</Text>
+        </View>
+      );
+    }
+    return blocks;
+  };
+
   const showModal = (title, message, onOk = null) => {
     setModalTitle(title);
     setModalMessage(message);
@@ -106,96 +123,102 @@ const LoginForm = ({ onSuccess }) => {
   };
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <BlurView intensity={30} tint="light" style={styles.blurContainer}>
-
-        {/* Header Section */}
-        <View style={styles.header}>
-          <Text style={styles.title}>
-            {showOtpInput ? 'Verification' : 'Welcome Back'}
-          </Text>
-          <Text style={styles.subtitle}>
-            {showOtpInput
-              ? `Enter the code sent to +91 ${phone}`
-              : 'Sign in to access your farm fresh account'}
-          </Text>
+    <View style={styles.container}>
+      {/* Welcome Text - Only show when NOT in OTP mode */}
+      {!showOtpInput && (
+        <View style={styles.welcomeContainer}>
+          <Text style={styles.welcomeText}>Welcome back</Text>
+          <Text style={styles.subText}>Login to access fresh farm products</Text>
         </View>
+      )}
 
-        {/* Form State specific content */}
-        {!showOtpInput ? (
-          /* Phone Input Section */
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Phone Number</Text>
-            <View style={[styles.inputWrapper, error && styles.inputError]}>
-              <Phone size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="98765 43210"
-                placeholderTextColor="#A0A0A0"
-                value={phone}
-                onChangeText={validatePhone}
-                keyboardType="phone-pad"
-                maxLength={10}
-                editable={!isLoading}
-              />
-            </View>
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <TouchableOpacity
-              style={[styles.button, (phone.length !== 10 || isLoading) && styles.buttonDisabled]}
-              onPress={handleSendOtp}
-              disabled={phone.length !== 10 || isLoading}
-            >
-              <Text style={styles.buttonText}>
-                {isLoading ? 'Sending...' : 'Continue'}
-              </Text>
-              {!isLoading && <ArrowRight size={20} color="white" style={styles.buttonIcon} />}
-            </TouchableOpacity>
-          </View>
-        ) : (
-          /* OTP Input Section */
-          <View style={styles.formGroup}>
-            <View style={styles.otpHeader}>
-              <Text style={styles.label}>Enter OTP</Text>
-              <TouchableOpacity onPress={resetForm}>
-                <Text style={styles.changeNumberText}>Change Number</Text>
-              </TouchableOpacity>
-            </View>
-
+      {/* Phone input section */}
+      {!showOtpInput ? (
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Phone Number</Text>
+          <View style={[styles.inputWrapper, error && styles.inputError]}>
+            <Phone size={20} color="#666" style={styles.inputIcon} />
             <TextInput
-              style={styles.otpInput}
-              placeholder="• • • • • •"
-              placeholderTextColor="#cbd5e1"
-              value={otp}
-              onChangeText={setOtp}
-              keyboardType="numeric"
-              maxLength={6}
-              autoFocus={true}
+              style={styles.input}
+              placeholder="98765 43210"
+              placeholderTextColor="#A0A0A0"
+              value={phone}
+              onChangeText={validatePhone}
+              keyboardType="phone-pad"
+              maxLength={10}
               editable={!isLoading}
             />
-
-            <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleVerifyOtp}
-              disabled={isLoading}
-            >
-              <Text style={styles.buttonText}>
-                {isLoading ? 'Verifying...' : 'Verify & Login'}
-              </Text>
+          </View>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <TouchableOpacity
+            style={[styles.button, (phone.length !== 10 || isLoading) && styles.buttonDisabled]}
+            onPress={handleSendOtp}
+            disabled={phone.length !== 10 || isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>Continue</Text>
+                <ArrowRight size={20} color="white" style={styles.buttonIcon} />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        // OTP input section
+        <Animated.View style={[styles.formGroup, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <View style={styles.otpHeader}>
+            <Text style={styles.label}>Enter Verification Code</Text>
+            <TouchableOpacity onPress={() => setShowOtpInput(false)}>
+              <Text style={styles.changeNumberText}>Change Number</Text>
             </TouchableOpacity>
+          </View>
+          <Text style={styles.otpSubText}>Sent to +91 {phone}</Text>
 
-            <View style={styles.resendContainer}>
-              <Text style={styles.resendText}>Didn't receive code? </Text>
-              <TouchableOpacity onPress={handleSendOtp} disabled={isLoading}>
-                <Text style={[styles.resendLink, isLoading && { opacity: 0.5 }]}>Resend</Text>
-              </TouchableOpacity>
+          <View style={styles.otpContainer}>
+            {/* Hidden Input for handling typing */}
+            <TextInput
+              style={styles.hiddenOtpInput}
+              value={otp}
+              onChangeText={(text) => {
+                const clean = text.replace(/[^0-9]/g, '');
+                setOtp(clean);
+                if (clean.length === 6) Keyboard.dismiss();
+              }}
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus={true}
+              caretHidden={true}
+            />
+            {/* Visible Blocks */}
+            <View style={styles.otpBlocksContainer} pointerEvents="none">
+              {renderOtpBlocks()}
             </View>
           </View>
-        )}
 
-      </BlurView>
+          <TouchableOpacity
+            style={[styles.button, (otp.length !== 6 || isLoading) && styles.buttonDisabled]}
+            onPress={handleVerifyOtp}
+            disabled={otp.length !== 6 || isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.buttonText}>Verify & Login</Text>
+            )}
+          </TouchableOpacity>
 
-      {/* Modern Modal */}
+          <View style={styles.resendContainer}>
+            <Text style={styles.resendText}>Didn't receive code? </Text>
+            <TouchableOpacity onPress={handleSendOtp} disabled={isLoading}>
+              <Text style={styles.resendLink}>Resend</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
+
+      {/* Modal ... */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -204,12 +227,7 @@ const LoginForm = ({ onSuccess }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{modalTitle}</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.modalTitle}>{modalTitle}</Text>
             <Text style={styles.modalMessage}>{modalMessage}</Text>
             <TouchableOpacity
               style={styles.modalButton}
@@ -218,120 +236,76 @@ const LoginForm = ({ onSuccess }) => {
                 if (modalOnOk) modalOnOk();
               }}
             >
-              <Text style={styles.modalButtonText}>Okay</Text>
+              <Text style={styles.modalButtonText}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 3,
   },
-  blurContainer: {
-    padding: 32,
-    backgroundColor: 'rgba(255,255,255,0.9)', // Fallback for Android if blur doesn't work perfectly, also cleaner white look
+  welcomeContainer: {
+    marginBottom: 20,
   },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  title: {
+  welcomeText: {
     fontSize: 26,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    fontWeight: '800',
+    color: '#1f2937',
+    marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 15,
-    color: '#666',
-    textAlign: 'center',
-    paddingHorizontal: 10,
-    lineHeight: 20,
+  subText: {
+    fontSize: 14,
+    color: '#6b7280',
   },
   formGroup: {
-    width: '100%',
+    marginBottom: 16,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#4b5563',
+    color: '#374151',
     marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: '#f9fafb',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginBottom: 6,
-    height: 54,
-  },
-  inputError: {
-    borderColor: '#ef4444',
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 50,
   },
   inputIcon: {
-    marginLeft: 16,
-    marginRight: 12,
+    marginRight: 10,
   },
   input: {
     flex: 1,
-    fontSize: 17,
-    color: '#1e293b',
-    height: '100%',
-    fontWeight: '500',
+    fontSize: 16,
+    color: '#1f2937',
   },
-  otpInput: {
-    textAlign: 'center',
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: 10,
-    color: '#1e293b',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    paddingVertical: 16,
-    marginBottom: 24,
+  inputError: {
+    borderColor: '#ef4444',
   },
   errorText: {
     color: '#ef4444',
     fontSize: 12,
     marginTop: 4,
-    marginBottom: 12,
     marginLeft: 4,
-    fontWeight: '500',
-  },
-  brandName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#004C46', // Dark Teal
-    letterSpacing: -0.5,
-    marginBottom: 4,
   },
   button: {
-    backgroundColor: '#004C46', // Dark Teal
+    backgroundColor: '#004C46',
     borderRadius: 12,
-    height: 54,
+    height: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 24,
     shadowColor: '#004C46',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -339,96 +313,123 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   buttonDisabled: {
-    backgroundColor: '#cbd5e1',
+    backgroundColor: '#9ca3af',
     shadowOpacity: 0,
     elevation: 0,
   },
   buttonText: {
-    color: 'white',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
     marginRight: 8,
   },
   buttonIcon: {
-    marginLeft: 4,
   },
   otpHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   changeNumberText: {
-    fontSize: 13,
     color: '#004C46',
+    fontSize: 12,
     fontWeight: '600',
+  },
+  otpSubText: {
+    color: '#6b7280',
+    fontSize: 13,
+    marginBottom: 20,
+  },
+  otpContainer: {
+    position: 'relative',
+    height: 50,
+    justifyContent: 'center',
+  },
+  hiddenOtpInput: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    opacity: 0, // Hide it but keep it interactable
+    zIndex: 2,
+  },
+  otpBlocksContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  otpBlock: {
+    width: 45,
+    height: 50,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#f9fafb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  otpBlockActive: {
+    borderColor: '#004C46',
+    backgroundColor: '#ffffff',
+  },
+  otpBlockFilled: {
+    borderColor: '#004C46',
+    backgroundColor: '#eff6ff',
+  },
+  otpText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1f2937',
   },
   resendContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 16,
   },
   resendText: {
-    color: '#64748b',
-    fontSize: 14,
+    color: '#6b7280',
+    fontSize: 13,
   },
   resendLink: {
-    color: '#10b981',
+    color: '#004C46',
+    fontSize: 13,
     fontWeight: '600',
-    fontSize: 14,
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   modalContent: {
     backgroundColor: 'white',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 24,
-    width: '100%',
-    maxWidth: 340,
+    width: '80%',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  modalHeader: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#1f2937',
   },
   modalMessage: {
-    fontSize: 15,
-    color: '#6b7280',
+    fontSize: 14,
+    color: '#4b5563',
     textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
-    width: '100%',
+    marginBottom: 20,
   },
   modalButton: {
-    backgroundColor: '#10b981',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 10,
+    backgroundColor: '#004C46',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
     width: '100%',
-    alignItems: 'center',
   },
   modalButtonText: {
     color: 'white',
-    fontSize: 16,
+    textAlign: 'center',
     fontWeight: '600',
   },
 });

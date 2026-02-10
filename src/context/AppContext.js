@@ -92,7 +92,7 @@
 // context/AppContext.js
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { notificationsAPI, wishlistAPI } from '../services/api';
+import { notificationsAPI, wishlistAPI, cartAPI } from '../services/api';
 
 const AppContext = createContext();
 
@@ -172,7 +172,9 @@ export const AppProvider = ({ children }) => {
           return;
         }
         const res = await wishlistAPI.getWishlist();
-        setWishlistItems(res.data.data.wishlist || []);
+        // Backend returns: { success: true, data: { customer: "...", items: [...] } }
+        const items = res.data.data?.items || [];
+        setWishlistItems(items);
       } catch (e) {
         if (e?.response?.status === 401) {
           // Not logged in or token expired, clear wishlist
@@ -186,22 +188,22 @@ export const AppProvider = ({ children }) => {
 
   // Fetch notifications from backend
   const fetchNotifications = async () => {
-    try {
-      const response = await notificationsAPI.getNotifications();
-      const notifs = Array.isArray(response.data.data) ? response.data.data : [];
-      setNotifications(notifs);
-      setUnreadNotificationCount(notifs.filter(n => n.unread).length);
-    } catch (error) {
-      setNotifications([]);
-      setUnreadNotificationCount(0);
-    }
+    // try {
+    //   const response = await notificationsAPI.getNotifications();
+    //   const notifs = Array.isArray(response.data.data) ? response.data.data : [];
+    //   setNotifications(notifs);
+    //   setUnreadNotificationCount(notifs.filter(n => n.unread).length);
+    // } catch (error) {
+    //   setNotifications([]);
+    //   setUnreadNotificationCount(0);
+    // }
   };
 
   // Poll for notifications every 30 seconds
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    // fetchNotifications();
+    // const interval = setInterval(fetchNotifications, 30000);
+    // return () => clearInterval(interval);
   }, []);
 
   // Increase quantity
@@ -224,30 +226,212 @@ export const AppProvider = ({ children }) => {
     );
   };
 
-  // Remove item from cart
-  const removeFromCart = (id) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== id));
+  // Helper to fetch wishlist (exposed for refresh)
+  const fetchWishlist = async () => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        setWishlistItems([]);
+        return;
+      }
+      const res = await wishlistAPI.getWishlist();
+      if (res.data.success) {
+        updateWishlistItems(res.data.data.wishlist || res.data.data.items || []);
+      }
+    } catch (e) {
+      if (e?.response?.status === 401) {
+        setWishlistItems([]);
+      } else {
+        console.error('Silent fetch wishlist failed', e);
+      }
+    }
   };
 
+  // Helper to fetch cart
+  const fetchCart = async () => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        setCartItems([]);
+        return;
+      }
+      const res = await cartAPI.getCart();
+      if (res.data.success) {
+        // Assuming data.cart.items or data.items
+        const items = res.data.data?.cart?.items || res.data.data?.items || [];
+        setCartItems(items);
+      }
+    } catch (e) {
+      if (e?.response?.status !== 404) { // 404 might mean empty cart for some backends
+        console.error('Silent fetch cart failed', e);
+      }
+    }
+  };
+
+  // Fetch initial data
+  useEffect(() => {
+    (async () => {
+      await Promise.all([fetchWishlist(), fetchCart()]);
+    })();
+  }, []);
+
+  // Add to Cart
+  const addToCart = async (productId, quantity = 1) => {
+    try {
+      console.log('AppContext: Adding to cart:', productId);
+      // Optimistic? Maybe later. For now just standard.
+      const res = await cartAPI.addToCart(productId, quantity);
+      if (res.data.success) {
+        await fetchCart();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Failed to add to cart', e);
+      return false;
+    }
+  };
+
+  // Remove item from cart
+  const removeFromCart = async (productId) => {
+    try {
+      console.log('AppContext: Removing from cart:', productId);
+      // Optimistic update
+      const previousItems = [...cartItems];
+      setCartItems((prev) => prev.filter((item) => {
+        const itemId = item.productId || item.product?._id || item.product || item.id;
+        return itemId?.toString() !== productId?.toString();
+      }));
+
+      const res = await cartAPI.removeCartItem(productId);
+      if (res.data.success) {
+        await fetchCart();
+        return true;
+      } else {
+        throw new Error('Failed to remove');
+      }
+    } catch (e) {
+      console.error('Failed to remove from cart', e);
+      // Revert if needed, but for removal usually we just re-fetch
+      await fetchCart();
+      return false;
+    }
+  };
+
+  // Update Cart Quantity
+  const updateCartItemQuantity = async (productId, quantity) => {
+    try {
+      if (quantity < 1) {
+        return removeFromCart(productId);
+      }
+
+      console.log('AppContext: Updating quantity:', productId, quantity);
+      // Optimistic update
+      setCartItems(prev => prev.map(item => {
+        const itemId = item.productId || item.product?._id || item.product || item.id;
+        if (itemId?.toString() === productId?.toString()) {
+          return { ...item, quantity };
+        }
+        return item;
+      }));
+
+      const res = await cartAPI.updateCartItem(productId, quantity);
+      if (res.data.success) {
+        await fetchCart();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('Failed to update cart quantity', e);
+      await fetchCart();
+      return false;
+    }
+  };
   // Add to Wishlist
   const addToWishlist = async (item) => {
+    // 1. Snapshot previous state for rollback
+    const previousItems = [...wishlistItems];
+
+    // 2. Optimistic Update
     try {
-      const productId = item._id;
-      if (!productId) throw new Error('Product _id is required');
+      const productId = item._id || item.id || item.product?._id || item.product;
+      const productIdStr = productId.toString();
+
+      if (!productId) {
+        console.error('Invalid product for wishlist:', item);
+        return false;
+      }
+
+      // Check if already in wishlist (prevent duplicates in optimistic state)
+      const exists = wishlistItems.some(w => {
+        const wId = w.product?._id || w.product;
+        return wId?.toString() === productIdStr;
+      });
+
+      if (!exists) {
+        // Construct a mock item that matches the schema structure
+        const optimisticItem = {
+          product: typeof productId === 'object' ? productId : { _id: productIdStr, ...item }, // Try to keep object if possible
+          name: item.name || item.product?.name,
+          price: item.price || item.product?.price,
+          image: item.image || item.thumbnail || item.images?.[0]?.url,
+          _id: 'temp_' + Date.now()
+        };
+        // If we only have ID, we might not have details, but HomeScreen passes full object.
+
+        console.log('AppContext: Optimistically adding:', productIdStr);
+        setWishlistItems(prev => [...prev, optimisticItem]);
+      }
+
+      // 3. API Call
       const res = await wishlistAPI.addToWishlist(productId);
-      setWishlistItems(res.data.data.wishlist || []);
+
+      if (res.data.success) {
+        // 4. Success - Fetch full populated list to be safe and consistent
+        //    We could use res.data.data.items, but it's unpopulated.
+        //    Refreshing ensures we have the "True" state.
+        console.log('AppContext: API success, fetching full wishlist...');
+        await fetchWishlist();
+        return true;
+      } else {
+        throw new Error('API reported failure');
+      }
+
     } catch (e) {
       console.error('Failed to add to wishlist', e);
+      // 5. Revert on failure
+      setWishlistItems(previousItems);
+      // Optional: Emit error to UI? for now return false
+      return false;
     }
   };
 
   // Remove from Wishlist
   const removeFromWishlist = async (id) => {
+    const previousItems = [...wishlistItems];
     try {
+      const idStr = id.toString();
+      console.log('AppContext: Optimistically removing:', idStr);
+
+      // Optimistic Remove
+      setWishlistItems(prev => prev.filter(w => {
+        const wId = w.product?._id || w.product;
+        return wId?.toString() !== idStr;
+      }));
+
       const res = await wishlistAPI.removeFromWishlist(id);
-      setWishlistItems(res.data.data.wishlist || []);
+
+      if (res.data.success) {
+        console.log('AppContext: API remove success, fetching full wishlist...');
+        await fetchWishlist();
+        return true;
+      } else {
+        throw new Error('API reported failure');
+      }
     } catch (e) {
       console.error('Failed to remove from wishlist', e);
+      setWishlistItems(previousItems);
+      return false;
     }
   };
 
@@ -274,7 +458,11 @@ export const AppProvider = ({ children }) => {
         setAllProducts,
         notifications,
         unreadNotificationCount,
+        notifications,
+        unreadNotificationCount,
         fetchNotifications,
+        addToCart,
+        updateCartItemQuantity,
       }}
     >
       {children}

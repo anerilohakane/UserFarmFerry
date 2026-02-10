@@ -76,6 +76,7 @@ export const SCREEN_NAMES = {
   // Product Screens
   PRODUCT_LIST: 'ProductList',
   PRODUCT_DETAILS: 'ProductDetails',
+  ONBOARDING: 'Onboarding',
   ADD_PRODUCT: 'AddProduct',
   EDIT_PRODUCT: 'EditProduct',
 

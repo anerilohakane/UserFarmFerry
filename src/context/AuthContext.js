@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import { CONFIG } from '../constants/config';
 import { authAPI, customerAPI } from '../services/api';
+import eventBus from '../utils/eventBus';
 
 const AuthContext = createContext();
 
@@ -88,6 +89,18 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus().finally(() => {
       clearTimeout(timeoutId);
     });
+
+    // Listen for global auth expiration events
+    const handleAuthExpired = () => {
+      console.log('AuthContext - Received AUTH_EXPIRED event, logging out...');
+      logout();
+    };
+
+    eventBus.on('AUTH_EXPIRED', handleAuthExpired);
+
+    return () => {
+      eventBus.off('AUTH_EXPIRED', handleAuthExpired);
+    };
   }, []);
 
   // Send OTP to customer phone

@@ -15,6 +15,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { wishlistAPI, cartAPI } from '../services/api';
+import { useAppContext } from '../context/AppContext';
 
 const { width } = Dimensions.get('window');
 
@@ -23,8 +24,9 @@ export default function WishlistScreen() {
   const insets = useSafeAreaInsets();
 
   // State
-  const [wishlistItems, setWishlistItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { wishlistItems, updateWishlistItems, removeFromWishlist } = useAppContext();
+  // const [wishlistItems, setWishlistItems] = useState([]); // Removed local state
+  const [loading, setLoading] = useState(false); // Changed default to false as context might have data
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [removingItems, setRemovingItems] = useState({});
@@ -43,7 +45,8 @@ export default function WishlistScreen() {
       console.log('Wishlist API Response:', response.data);
 
       if (response.data.success) {
-        setWishlistItems(response.data.data.wishlist || []);
+        // Backend returns items array in data.data.items
+        updateWishlistItems(response.data.data.items || []);
       } else {
         setError('Failed to fetch wishlist');
       }
@@ -64,7 +67,9 @@ export default function WishlistScreen() {
   // --- Handlers ---
   const handleAddToCart = async (item) => {
     try {
-      await cartAPI.addToCart(item._id || item.id, 1);
+      // Use product ID
+      const productId = item.product?._id || item.product || item._id || item.id;
+      await cartAPI.addToCart(productId, 1);
       Alert.alert('Success', 'Added to Cart');
     } catch (error) {
       console.error(error);
@@ -75,8 +80,7 @@ export default function WishlistScreen() {
   const handleRemoveFromWishlist = async (productId) => {
     setRemovingItems(prev => ({ ...prev, [productId]: true }));
     try {
-      await wishlistAPI.removeFromWishlist(productId);
-      await fetchWishlist();
+      await removeFromWishlist(productId);
     } catch (error) {
       console.error(error);
       Alert.alert('Error', 'Failed to remove from wishlist');
@@ -106,7 +110,7 @@ export default function WishlistScreen() {
           {/* 5 mins Badge */}
           <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
             <Feather name="clock" size={12} color="black" />
-            <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+            <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
           </View>
           {/* Profile Icon */}
           <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
@@ -160,49 +164,106 @@ export default function WishlistScreen() {
     </LinearGradient>
   );
 
-  const renderItem = ({ item }) => (
-    <View style={{
-      width: (width - 48) / 2,
-      margin: 8,
-      backgroundColor: 'white',
-      borderRadius: 12,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: '#f3f4f6',
-      opacity: removingItems[item._id] ? 0.6 : 1
-    }}>
-      <Image
-        source={{ uri: item.images?.[0]?.url || item.image || 'https://via.placeholder.com/150' }}
-        style={{ width: '100%', height: 160 }}
-        resizeMode="cover"
-      />
-      <TouchableOpacity
-        onPress={() => handleRemoveFromWishlist(item._id)}
-        disabled={removingItems[item._id]}
-        style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'white', borderRadius: 12, padding: 4 }}
-      >
-        <Feather name="trash-2" size={16} color="red" />
-      </TouchableOpacity>
-      <View style={{ padding: 8 }}>
-        <Text numberOfLines={1} style={{ fontWeight: '600', fontSize: 13 }}>{item.name}</Text>
-        <Text style={{ fontWeight: 'bold', fontSize: 14, marginTop: 4 }}>₹{item.price}</Text>
-        <TouchableOpacity
-          onPress={() => handleAddToCart(item)}
-          style={{
-            marginTop: 8,
-            paddingVertical: 6,
-            backgroundColor: '#166534',
-            borderRadius: 8,
-            alignItems: 'center'
-          }}
-        >
-          <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Add to Cart</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  const renderItem = ({ item }) => {
+    // Robust property access
+    const productId = item.product?._id || item.product || item._id;
+    const name = item.product?.name || item.name;
+    const price = item.product?.price || item.price;
+    const image = item.product?.images?.[0]?.url || item.thumbnail || item.image || 'https://via.placeholder.com/150';
 
-  // Main Render
+    return (
+      <View style={{
+        flexDirection: 'row',
+        width: width - 32, // Full width minus padding
+        marginHorizontal: 16, // Align with header padding
+        marginBottom: 16,
+        backgroundColor: 'white',
+        borderRadius: 16,
+        padding: 12,
+        // Shadow
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+        alignItems: 'center',
+        opacity: removingItems[productId] ? 0.6 : 1
+      }}>
+        {/* Left: Image */}
+        <View style={{
+          width: 90,
+          height: 90,
+          borderRadius: 12,
+          overflow: 'hidden',
+          backgroundColor: '#f3f4f6',
+          marginRight: 16
+        }}>
+          <Image
+            source={{ uri: image }}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+          />
+        </View>
+
+        {/* Middle: Info */}
+        <View style={{ flex: 1, justifyContent: 'space-between', height: 90, paddingVertical: 4 }}>
+          <View>
+            <Text numberOfLines={2} style={{ fontWeight: '700', fontSize: 15, color: '#1f2937', lineHeight: 20 }}>
+              {name}
+            </Text>
+            {/* Optional: Add Unit/Weight if available in data */}
+            {item.product?.unit && (
+              <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>
+                {item.product.unit}
+              </Text>
+            )}
+            <Text style={{ fontWeight: '800', fontSize: 16, color: '#166534', marginTop: 8 }}>
+              ₹{price}
+            </Text>
+          </View>
+        </View>
+
+        {/* Right: Actions */}
+        <View style={{ justifyContent: 'space-between', alignItems: 'flex-end', height: 90, paddingVertical: 4 }}>
+          {/* Delete Button (Top Right) */}
+          <TouchableOpacity
+            onPress={() => handleRemoveFromWishlist(productId)}
+            disabled={removingItems[productId]}
+            style={{
+              padding: 8,
+              backgroundColor: '#fee2e2',
+              borderRadius: 8,
+            }}
+          >
+            {removingItems[productId] ? (
+              <ActivityIndicator size="small" color="#ef4444" />
+            ) : (
+              <Feather name="trash-2" size={18} color="#ef4444" />
+            )}
+          </TouchableOpacity>
+
+          {/* Add Button (Bottom Right) */}
+          <TouchableOpacity
+            onPress={() => handleAddToCart(item)}
+            style={{
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              backgroundColor: '#166534',
+              borderRadius: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: 'auto'
+            }}
+          >
+            <Feather name="shopping-cart" size={16} color="white" style={{ marginRight: 6 }} />
+            <Text style={{ color: 'white', fontSize: 13, fontWeight: '700' }}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   // Main Render
   if (loading) {
     return (
@@ -220,7 +281,7 @@ export default function WishlistScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                 <Feather name="clock" size={12} color="black" />
-                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
                 <Feather name="user" size={20} color="#004C46" />
@@ -252,7 +313,7 @@ export default function WishlistScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
                 <Feather name="clock" size={12} color="black" />
-                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
                 <Feather name="user" size={20} color="#004C46" />
@@ -298,7 +359,7 @@ export default function WishlistScreen() {
             {/* 5 mins Badge */}
             <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
               <Feather name="clock" size={12} color="black" />
-              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
             </View>
             {/* Profile Icon */}
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
@@ -308,19 +369,27 @@ export default function WishlistScreen() {
         </View>
       </View>
 
+      {/* Title Section */}
+      <View style={{ backgroundColor: '#003B37', paddingHorizontal: 16, paddingVertical: 12 }}>
+        <Text style={{ color: 'white', fontSize: 18, fontWeight: '700' }}>Your Wishlist ({wishlistItems.length})</Text>
+      </View>
+
       {/* Scrollable Content Area - White Background */}
-      <View style={{ flex: 1, backgroundColor: 'white' }}>
+      <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
         {wishlistItems.length === 0 ? (
           renderEmptyState()
         ) : (
           <FlatList
             data={wishlistItems}
-            keyExtractor={item => (item.id || item._id).toString()}
+            keyExtractor={item => {
+              // Use product ID as key
+              return (item.product?._id || item.product || item._id || Math.random()).toString();
+            }}
             renderItem={renderItem}
-            numColumns={2}
-            contentContainerStyle={{ padding: 8 }}
+            contentContainerStyle={{ paddingVertical: 16 }}
             refreshing={refreshing}
             onRefresh={onRefresh}
+            showsVerticalScrollIndicator={false}
           />
         )}
       </View>

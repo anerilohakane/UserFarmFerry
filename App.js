@@ -8,6 +8,8 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import Toast from "react-native-toast-message";
 import { NavigationContainer } from "@react-navigation/native";
 
+import { toastConfig } from "./src/components/CustomToast";
+
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -15,7 +17,7 @@ export default function App() {
         <AuthProvider>
           <AppProvider>
             <AppNavigator />
-            <Toast />
+            <Toast config={toastConfig} />
             <StatusBar style="light" backgroundColor="#000000" translucent={true} />
           </AppProvider>
         </AuthProvider>

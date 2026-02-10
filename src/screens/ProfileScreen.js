@@ -6,7 +6,8 @@ import {
   ScrollView,
   Image,
   StatusBar,
-  Linking
+  Linking,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -52,6 +53,27 @@ const ProfileScreen = () => {
     </TouchableOpacity>
   );
 
+  const handleLogout = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              console.error("Logout failed:", error);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#004C46' }} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="#004C46" />
@@ -76,7 +98,7 @@ const ProfileScreen = () => {
             {/* 5 mins Badge */}
             <View style={{ backgroundColor: 'white', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
               <Feather name="clock" size={12} color="black" />
-              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>5 mins</Text>
+              <Text style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>30 mins</Text>
             </View>
             {/* Profile Icon */}
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'white', justifyContent: 'center', alignItems: 'center' }}>
@@ -165,7 +187,7 @@ const ProfileScreen = () => {
 
         {/* 4. Sign Out Button */}
         <TouchableOpacity
-          onPress={logout}
+          onPress={handleLogout}
           style={{
             flexDirection: 'row',
             justifyContent: 'center',

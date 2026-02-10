@@ -30,8 +30,8 @@ export const CONFIG = {
 
         // Customer endpoints
         CUSTOMER: {
-            PROFILE: '/customer/profile',
-            UPDATE_PROFILE: '/customer/profile',
+            PROFILE: '/customer',
+            UPDATE_PROFILE: '/customer',
             ADD_ADDRESS: '/customer/addresses',
             UPDATE_ADDRESS: '/customer/addresses',
             DELETE_ADDRESS: '/customer/addresses',

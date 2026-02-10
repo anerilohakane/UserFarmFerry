@@ -1,9 +1,9 @@
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeft } from 'lucide-react-native';
+import { Feather } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Dimensions, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, SafeAreaView, ScrollView, StatusBar, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { customerAPI } from '../services/api';
@@ -28,6 +28,7 @@ const AddAddressScreen = () => {
   const [generalError, setGeneralError] = useState('');
 
   // Parse address from navigation params
+
   const parseAddressFromString = (addressString) => {
     if (!addressString) return {};
 
@@ -208,231 +209,233 @@ const AddAddressScreen = () => {
       {/* AppBar with back arrow */}
       <View className="flex-row items-center px-4 py-3 bg-white border-b border-gray-200">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
-          <ArrowLeft size={responsiveValue(20, 24)} color="black" />
+          <Feather name="arrow-left" size={responsiveValue(20, 24)} color="black" />
         </TouchableOpacity>
         <Text className={`${responsiveValue('text-base', 'text-lg')} text-black font-medium`}>Add Address</Text>
       </View>
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          paddingHorizontal: responsiveValue(16, 24),
-          paddingVertical: responsiveValue(16, 20),
-          paddingBottom: responsiveValue(24, 32)
-        }}
-      >
-        {generalError ? (
-          <Text
-            className="text-red-500 mb-4 text-center"
-            style={{ fontSize: responsiveValue(14, 16) }}
-          >
-            {generalError}
-          </Text>
-        ) : null}
-
-        {/* Address Type Picker */}
-        <Controller
-          control={control}
-          name="addressType"
-          rules={{ required: 'Address type is required' }}
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-4">
-              <Text
-                className="mb-2 text-gray-700 font-medium"
-                style={{ fontSize: responsiveValue(14, 16) }}
-              >
-                Address Type
-              </Text>
-              <View className="border border-gray-300 rounded-lg">
-                <Picker
-                  selectedValue={value}
-                  onValueChange={onChange}
-                  style={{
-                    height: responsiveValue(50, 52)
-                  }}
-                >
-                  {ADDRESS_TYPES.map((type) => (
-                    <Picker.Item
-                      key={type.value}
-                      label={type.label}
-                      value={type.value}
-                    />
-                  ))}
-                </Picker>
-              </View>
-              {errors.addressType?.message && (
-                <Text
-                  className="text-red-500 text-xs mt-1"
-                  style={{ fontSize: responsiveValue(12, 14) }}
-                >
-                  {errors.addressType.message}
-                </Text>
-              )}
-            </View>
-          )}
-        />
-
-        {/* Street Address */}
-        <Controller
-          control={control}
-          name="street"
-          rules={{ required: 'Street address is required' }}
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-4">
-              <Input
-                label="Street Address"
-                placeholder="Enter street address"
-                value={value}
-                onChangeText={onChange}
-                error={errors.street?.message}
-                fontSize={responsiveValue(14, 16)}
-                inputHeight={responsiveValue(48, 52)}
-              />
-            </View>
-          )}
-        />
-
-        {/* City */}
-        <Controller
-          control={control}
-          name="city"
-          rules={{ required: 'City is required' }}
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-4">
-              <Input
-                label="City"
-                placeholder="Enter city"
-                value={value}
-                onChangeText={onChange}
-                error={errors.city?.message}
-                fontSize={responsiveValue(14, 16)}
-                inputHeight={responsiveValue(48, 52)}
-              />
-            </View>
-          )}
-        />
-
-        {/* State */}
-        <Controller
-          control={control}
-          name="state"
-          rules={{ required: 'State is required' }}
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-4">
-              <Input
-                label="State"
-                placeholder="Enter state"
-                value={value}
-                onChangeText={onChange}
-                error={errors.state?.message}
-                fontSize={responsiveValue(14, 16)}
-                inputHeight={responsiveValue(48, 52)}
-              />
-            </View>
-          )}
-        />
-
-        {/* Postal Code */}
-        <Controller
-          control={control}
-          name="postalCode"
-          rules={{ required: 'Postal code is required' }}
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-4">
-              <Input
-                label="Postal Code"
-                placeholder="Enter postal code"
-                value={value}
-                onChangeText={onChange}
-                error={errors.postalCode?.message}
-                keyboardType="numeric"
-                fontSize={responsiveValue(14, 16)}
-                inputHeight={responsiveValue(48, 52)}
-              />
-            </View>
-          )}
-        />
-
-        {/* Country */}
-        <Controller
-          control={control}
-          name="country"
-          rules={{ required: 'Country is required' }}
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-4">
-              <Input
-                label="Country"
-                placeholder="Enter country"
-                value={value}
-                onChangeText={onChange}
-                error={errors.country?.message}
-                fontSize={responsiveValue(14, 16)}
-                inputHeight={responsiveValue(48, 52)}
-              />
-            </View>
-          )}
-        />
-
-        {/* Name */}
-        <Controller
-          control={control}
-          name="name"
-          rules={{ required: 'Name is required' }}
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-4">
-              <Input
-                label="Full Name"
-                placeholder="Enter full name"
-                value={value}
-                onChangeText={onChange}
-                error={errors.name?.message}
-                fontSize={responsiveValue(14, 16)}
-                inputHeight={responsiveValue(48, 52)}
-              />
-            </View>
-          )}
-        />
-
-
-        {/* Phone Number */}
-        <Controller
-          control={control}
-          name="phone"
-          rules={{
-            required: 'Phone number is required',
-            pattern: {
-              value: /^[0-9]{10}$/,
-              message: 'Phone number must be 10 digits',
-            },
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: responsiveValue(16, 24),
+            paddingVertical: responsiveValue(16, 20),
+            paddingBottom: responsiveValue(24, 32)
           }}
-          render={({ field: { onChange, value } }) => (
-            <View className="mb-6">
-              <Input
-                label="Phone Number"
-                placeholder="Enter phone number"
-                value={value}
-                onChangeText={onChange}
-                error={errors.phone?.message}
-                keyboardType="phone-pad"
-                maxLength={10}
-                fontSize={responsiveValue(14, 16)}
-                inputHeight={responsiveValue(48, 52)}
-              />
-            </View>
-          )}
-        />
+        >
+          {generalError ? (
+            <Text
+              className="text-red-500 mb-4 text-center"
+              style={{ fontSize: responsiveValue(14, 16) }}
+            >
+              {generalError}
+            </Text>
+          ) : null}
 
-        {/* Save Button */}
-        <Button
-          title="Save Address"
-          onPress={handleSubmit(onSubmit)}
-          loading={isLoading}
-          fullWidth
-          size={responsiveValue('medium', 'large')}
-          fontSize={responsiveValue(16, 18)}
-          buttonHeight={responsiveValue(50, 56)}
-        />
-      </ScrollView>
+          {/* Address Type Picker */}
+          <Controller
+            control={control}
+            name="addressType"
+            rules={{ required: 'Address type is required' }}
+            render={({ field: { onChange, value } }) => (
+              <View className="mb-4">
+                <Text
+                  className="mb-2 text-gray-700 font-medium"
+                  style={{ fontSize: responsiveValue(14, 16) }}
+                >
+                  Address Type
+                </Text>
+                <View className="border border-gray-300 rounded-lg">
+                  <Picker
+                    selectedValue={value}
+                    onValueChange={onChange}
+                    style={{
+                      height: responsiveValue(50, 52)
+                    }}
+                  >
+                    {ADDRESS_TYPES.map((type) => (
+                      <Picker.Item
+                        key={type.value}
+                        label={type.label}
+                        value={type.value}
+                      />
+                    ))}
+                  </Picker>
+                </View>
+                {errors.addressType?.message && (
+                  <Text
+                    className="text-red-500 text-xs mt-1"
+                    style={{ fontSize: responsiveValue(12, 14) }}
+                  >
+                    {errors.addressType.message}
+                  </Text>
+                )}
+              </View>
+            )}
+          />
+
+          {/* Street Address */}
+          <Controller
+            control={control}
+            name="street"
+            rules={{ required: 'Street address is required' }}
+            render={({ field: { onChange, value } }) => (
+              <View className="mb-4">
+                <Input
+                  label="Street Address"
+                  placeholder="Enter street address"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.street?.message}
+                  fontSize={responsiveValue(14, 16)}
+                  inputHeight={responsiveValue(48, 52)}
+                />
+              </View>
+            )}
+          />
+
+          {/* City */}
+          <Controller
+            control={control}
+            name="city"
+            rules={{ required: 'City is required' }}
+            render={({ field: { onChange, value } }) => (
+              <View className="mb-4">
+                <Input
+                  label="City"
+                  placeholder="Enter city"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.city?.message}
+                  fontSize={responsiveValue(14, 16)}
+                  inputHeight={responsiveValue(48, 52)}
+                />
+              </View>
+            )}
+          />
+
+          {/* State */}
+          <Controller
+            control={control}
+            name="state"
+            rules={{ required: 'State is required' }}
+            render={({ field: { onChange, value } }) => (
+              <View className="mb-4">
+                <Input
+                  label="State"
+                  placeholder="Enter state"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.state?.message}
+                  fontSize={responsiveValue(14, 16)}
+                  inputHeight={responsiveValue(48, 52)}
+                />
+              </View>
+            )}
+          />
+
+          {/* Postal Code */}
+          <Controller
+            control={control}
+            name="postalCode"
+            rules={{ required: 'Postal code is required' }}
+            render={({ field: { onChange, value } }) => (
+              <View className="mb-4">
+                <Input
+                  label="Postal Code"
+                  placeholder="Enter postal code"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.postalCode?.message}
+                  keyboardType="numeric"
+                  fontSize={responsiveValue(14, 16)}
+                  inputHeight={responsiveValue(48, 52)}
+                />
+              </View>
+            )}
+          />
+
+          {/* Country */}
+          <Controller
+            control={control}
+            name="country"
+            rules={{ required: 'Country is required' }}
+            render={({ field: { onChange, value } }) => (
+              <View className="mb-4">
+                <Input
+                  label="Country"
+                  placeholder="Enter country"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.country?.message}
+                  fontSize={responsiveValue(14, 16)}
+                  inputHeight={responsiveValue(48, 52)}
+                />
+              </View>
+            )}
+          />
+
+          {/* Name */}
+          <Controller
+            control={control}
+            name="name"
+            rules={{ required: 'Name is required' }}
+            render={({ field: { onChange, value } }) => (
+              <View className="mb-4">
+                <Input
+                  label="Full Name"
+                  placeholder="Enter full name"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.name?.message}
+                  fontSize={responsiveValue(14, 16)}
+                  inputHeight={responsiveValue(48, 52)}
+                />
+              </View>
+            )}
+          />
+
+
+          {/* Phone Number */}
+          <Controller
+            control={control}
+            name="phone"
+            rules={{
+              required: 'Phone number is required',
+              pattern: {
+                value: /^[0-9]{10}$/,
+                message: 'Phone number must be 10 digits',
+              },
+            }}
+            render={({ field: { onChange, value } }) => (
+              <View className="mb-6">
+                <Input
+                  label="Phone Number"
+                  placeholder="Enter phone number"
+                  value={value}
+                  onChangeText={onChange}
+                  error={errors.phone?.message}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  fontSize={responsiveValue(14, 16)}
+                  inputHeight={responsiveValue(48, 52)}
+                />
+              </View>
+            )}
+          />
+
+          {/* Save Button */}
+          <Button
+            title="Save Address"
+            onPress={handleSubmit(onSubmit)}
+            loading={isLoading}
+            fullWidth
+            size={responsiveValue('medium', 'large')}
+            fontSize={responsiveValue(16, 18)}
+            buttonHeight={responsiveValue(50, 56)}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { SCREEN_NAMES } from '../types';
 
 // Auth Screens
+import OnboardingScreen from '../screens/OnboardingScreen';
 import GetStartedScreen from '../screens/GetStartedScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
